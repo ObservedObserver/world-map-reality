@@ -15,7 +15,7 @@ const MAP_WIDTH = 1100
 const MAP_HEIGHT = 650
 const MAP_PADDING = 40
 
-const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36]
+const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36, 392]
 
 const COUNTRY_META: Record<number, { name: string; area: number }> = {
   304: { name: 'Greenland', area: 2166086 },
@@ -26,6 +26,7 @@ const COUNTRY_META: Record<number, { name: string; area: number }> = {
   356: { name: 'India', area: 3287263 },
   180: { name: 'DR Congo', area: 2344858 },
   36: { name: 'Australia', area: 7692024 },
+  392: { name: 'Japan', area: 377975 },
 }
 
 const COLOR_PALETTE = [
@@ -37,7 +38,29 @@ const COLOR_PALETTE = [
   '#b5e48c',
   '#ffb870',
   '#86b6ff',
+  '#f08a5d',
+  '#7ed7c1',
+  '#ffd166',
+  '#06d6a0',
+  '#118ab2',
+  '#ef476f',
+  '#ffd6a5',
+  '#7f5af0',
+  '#72efdd',
+  '#e07a5f',
+  '#f2cc8f',
+  '#84a59d',
+  '#f28482',
+  '#a3cef1',
+  '#ffcad4',
+  '#cdb4db',
 ]
+
+const normalizeId = (value: string | number) => {
+  const raw = String(value)
+  const stripped = raw.replace(/^0+/, '')
+  return stripped === '' ? '0' : stripped
+}
 
 type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
   id?: number | string
@@ -145,7 +168,9 @@ function App() {
             const id = row.id
             const name = row.name
             if (id && name) {
-              nameLookup.set(String(id), String(name))
+              const rawId = String(id)
+              nameLookup.set(rawId, String(name))
+              nameLookup.set(normalizeId(rawId), String(name))
             }
           })
         }
@@ -166,8 +191,9 @@ function App() {
         const prepared: CountryDatum[] = allFeatures
           .filter((feature) => feature.id !== undefined && feature.id !== null)
           .map((feature) => {
-            const id = String(feature.id)
-            const numericId = Number(feature.id)
+            const rawId = feature.id as string | number
+            const id = normalizeId(rawId)
+            const numericId = Number(rawId)
             const meta = COUNTRY_META[numericId]
             const [lng, lat] = d3.geoCentroid(feature)
             const projected = projection([lng, lat]) ?? [0, 0]
@@ -229,13 +255,21 @@ function App() {
 
   const filteredCountries = useMemo(() => {
     const query = countryFilter.trim().toLowerCase()
-    if (!query) {
-      return countries
-    }
-    return countries.filter((country) =>
-      country.name.toLowerCase().includes(query)
-    )
-  }, [countries, countryFilter])
+    const base = query
+      ? countries.filter((country) =>
+          country.name.toLowerCase().includes(query)
+        )
+      : countries
+    const selectedSet = new Set(draggableIds)
+    return [...base].sort((a, b) => {
+      const aSelected = selectedSet.has(a.id) ? 0 : 1
+      const bSelected = selectedSet.has(b.id) ? 0 : 1
+      if (aSelected !== bSelected) {
+        return aSelected - bSelected
+      }
+      return a.name.localeCompare(b.name)
+    })
+  }, [countries, countryFilter, draggableIds])
 
   const orderedCountries = useMemo(() => {
     const items = [...draggableCountries]

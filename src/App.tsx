@@ -1,34 +1,514 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent } from 'react'
+import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson'
+import type { GeometryCollection, Topology } from 'topojson-specification'
+import * as d3 from 'd3'
+import * as topojson from 'topojson-client'
 import './App.css'
 
+const WORLD_TOPO_URL =
+  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+
+const MAP_WIDTH = 1100
+const MAP_HEIGHT = 650
+const MAP_PADDING = 40
+
+const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36]
+
+const COUNTRY_META: Record<number, { name: string; area: number }> = {
+  304: { name: 'Greenland', area: 2166086 },
+  643: { name: 'Russia', area: 17098246 },
+  124: { name: 'Canada', area: 9984670 },
+  840: { name: 'United States', area: 9833520 },
+  76: { name: 'Brazil', area: 8515767 },
+  356: { name: 'India', area: 3287263 },
+  180: { name: 'DR Congo', area: 2344858 },
+  36: { name: 'Australia', area: 7692024 },
+}
+
+const COLOR_PALETTE = [
+  '#ef6f5a',
+  '#f6c453',
+  '#6ad0c4',
+  '#9bd0ff',
+  '#f49cbb',
+  '#b5e48c',
+  '#ffb870',
+  '#86b6ff',
+]
+
+type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
+  id?: number | string
+}
+
+type CountriesTopology = Topology<{ countries: GeometryCollection }>
+
+type CountryDatum = {
+  id: string
+  name: string
+  area: number
+  feature: CountryFeature
+  originalCentroid: [number, number]
+  centroidScreen: [number, number]
+  offset: { x: number; y: number }
+  color: string
+}
+
+type DragState = {
+  id: string
+  start: { x: number; y: number }
+  origin: { x: number; y: number }
+  centroid: [number, number]
+}
+
+const formatLatitude = (lat: number) => {
+  const absolute = Math.abs(lat)
+  if (absolute < 0.05) {
+    return `${absolute.toFixed(1)}deg`
+  }
+  const direction = lat >= 0 ? 'N' : 'S'
+  return `${absolute.toFixed(1)}deg${direction}`
+}
+
+const formatScale = (scale: number) => `${Math.round(scale * 100)}%`
+
+const getMercatorScale = (originalLat: number, currentLat: number) =>
+  Math.cos((originalLat * Math.PI) / 180) /
+  Math.cos((currentLat * Math.PI) / 180)
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [countries, setCountries] = useState<CountryDatum[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const dragState = useRef<DragState | null>(null)
+  const areaFormatter = useMemo(
+    () => new Intl.NumberFormat('en-US'),
+    []
+  )
+
+  const projection = useMemo(
+    () =>
+      d3
+        .geoMercator()
+        .scale(175)
+        .translate([MAP_WIDTH / 2, MAP_HEIGHT / 2 + 10]),
+    []
+  )
+
+  const pathGenerator = useMemo(
+    () => d3.geoPath(projection),
+    [projection]
+  )
+
+  const latLines = useMemo(() => d3.range(-80, 81, 20), [])
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(WORLD_TOPO_URL, {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          throw new Error('Unable to load map data.')
+        }
+        const topoData = (await response.json()) as CountriesTopology
+        const countriesObject = topoData.objects?.countries
+        if (!countriesObject) {
+          throw new Error('Unexpected map data format.')
+        }
+
+        const collection = topojson.feature(
+          topoData,
+          countriesObject
+        ) as FeatureCollection<Geometry, GeoJsonProperties>
+
+        const featuresById = new Map<number, CountryFeature>()
+        for (const feature of collection.features) {
+          const numericId = Number(feature.id)
+          if (Number.isFinite(numericId) && COUNTRY_META[numericId]) {
+            featuresById.set(numericId, feature)
+          }
+        }
+
+        const prepared: CountryDatum[] = []
+        COUNTRY_ORDER.forEach((id, index) => {
+          const feature = featuresById.get(id)
+          if (!feature) {
+            return
+          }
+          const meta = COUNTRY_META[id]
+          const [lng, lat] = d3.geoCentroid(feature)
+          const projected = projection([lng, lat]) ?? [0, 0]
+          prepared.push({
+            id: String(id),
+            name: meta?.name ?? feature.properties?.name ?? `Country ${id}`,
+            area: meta?.area ?? 0,
+            feature,
+            originalCentroid: [lng, lat],
+            centroidScreen: [projected[0], projected[1]],
+            offset: { x: 0, y: 0 },
+            color: COLOR_PALETTE[index % COLOR_PALETTE.length],
+          })
+        })
+
+        if (!cancelled) {
+          setCountries(prepared)
+          setSelectedId(prepared[0]?.id ?? null)
+          setLoading(false)
+        }
+      } catch (err) {
+        if (cancelled) {
+          return
+        }
+        const message =
+          err instanceof Error ? err.message : 'Failed to load map.'
+        setError(message)
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [projection])
+
+  const orderedCountries = useMemo(() => {
+    const items = [...countries]
+    const score = (id: string) =>
+      id === draggingId ? 2 : id === selectedId ? 1 : 0
+    items.sort((a, b) => score(a.id) - score(b.id))
+    return items
+  }, [countries, draggingId, selectedId])
+
+  const selectedCountry =
+    countries.find((country) => country.id === selectedId) ?? null
+
+  const handlePointerDown = (
+    event: PointerEvent<SVGGElement>,
+    country: CountryDatum
+  ) => {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragState.current = {
+      id: country.id,
+      start: { x: event.clientX, y: event.clientY },
+      origin: { x: country.offset.x, y: country.offset.y },
+      centroid: country.centroidScreen,
+    }
+    setSelectedId(country.id)
+    setDraggingId(country.id)
+  }
+
+  const handlePointerMove = (
+    event: PointerEvent<SVGGElement>,
+    id: string
+  ) => {
+    if (!dragState.current || dragState.current.id !== id) {
+      return
+    }
+    const dx = event.clientX - dragState.current.start.x
+    const dy = event.clientY - dragState.current.start.y
+    const nextOffset = {
+      x: dragState.current.origin.x + dx,
+      y: dragState.current.origin.y + dy,
+    }
+
+    const centroidX = dragState.current.centroid[0]
+    const centroidY = dragState.current.centroid[1]
+    const clampedCentroidX = Math.min(
+      Math.max(centroidX + nextOffset.x, MAP_PADDING),
+      MAP_WIDTH - MAP_PADDING
+    )
+    const clampedCentroidY = Math.min(
+      Math.max(centroidY + nextOffset.y, MAP_PADDING),
+      MAP_HEIGHT - MAP_PADDING
+    )
+    const clampedOffset = {
+      x: clampedCentroidX - centroidX,
+      y: clampedCentroidY - centroidY,
+    }
+
+    setCountries((prev) =>
+      prev.map((country) =>
+        country.id === id ? { ...country, offset: clampedOffset } : country
+      )
+    )
+  }
+
+  const handlePointerUp = (
+    event: PointerEvent<SVGGElement>,
+    id: string
+  ) => {
+    if (dragState.current?.id !== id) {
+      return
+    }
+    dragState.current = null
+    setDraggingId(null)
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  const getCurrentLat = (country: CountryDatum) => {
+    const [cx, cy] = country.centroidScreen
+    const currentPoint: [number, number] = [
+      cx + country.offset.x,
+      cy + country.offset.y,
+    ]
+    const inverted = projection.invert(currentPoint)
+    return inverted ? inverted[1] : country.originalCentroid[1]
+  }
+
+  const selectedDetails = selectedCountry
+    ? (() => {
+        const currentLat = getCurrentLat(selectedCountry)
+        const originalLat = selectedCountry.originalCentroid[1]
+        return {
+          originalLat,
+          currentLat,
+          currentScale: getMercatorScale(originalLat, currentLat),
+        }
+      })()
+    : null
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app">
+      <header className="app-header">
+        <div className="header-copy">
+          <p className="eyebrow">Mercator True Size Demo</p>
+          <h1>Drag countries to compare Mercator sizes by latitude.</h1>
+          <p className="subhead">
+            Mercator inflates shapes near the poles. Drag a country to a new
+            latitude and it resizes as if it belonged there.
+          </p>
+        </div>
+        <div className="math-card">
+          <div className="math-label">Mercator distortion</div>
+          <div className="math-formula">1 / cos(latitude)</div>
+          <div className="math-detail">
+            Drag scale = cos(original lat) / cos(current lat)
+          </div>
+        </div>
+      </header>
+
+      <main className="layout">
+        <section className="map-shell">
+          <div className="map-header">
+            <h2>Move the comparison set</h2>
+            <p>
+              Drag any colored country anywhere on the map. The size updates
+              based on its new latitude, just like Mercator does.
+            </p>
+          </div>
+
+          <div className="map-frame">
+            {loading && <div className="map-loading">Loading map...</div>}
+            {error && <div className="map-error">{error}</div>}
+            {!loading && !error && (
+              <svg
+                className="map-svg"
+                viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+                role="img"
+                aria-label="Mercator world map with draggable countries"
+              >
+                <defs>
+                  <filter
+                    id="countryShadow"
+                    x="-20%"
+                    y="-20%"
+                    width="140%"
+                    height="140%"
+                  >
+                    <feDropShadow
+                      dx="0"
+                      dy="10"
+                      stdDeviation="8"
+                      floodColor="rgba(6, 12, 22, 0.7)"
+                    />
+                  </filter>
+                </defs>
+
+                <rect
+                  className="map-ocean"
+                  width={MAP_WIDTH}
+                  height={MAP_HEIGHT}
+                />
+
+                <g className="lat-lines">
+                  {latLines.map((lat) => {
+                    const line = {
+                      type: 'LineString',
+                      coordinates: [
+                        [-180, lat],
+                        [180, lat],
+                      ],
+                    } as const
+                    const path = pathGenerator(line)
+                    if (!path) {
+                      return null
+                    }
+                    return (
+                      <path
+                        key={`lat-${lat}`}
+                        d={path}
+                        className={`lat-line ${lat === 0 ? 'equator' : ''}`}
+                      />
+                    )
+                  })}
+                </g>
+
+                <g className="lat-labels">
+                  {latLines.map((lat) => {
+                    const labelPoint = projection([-168, lat])
+                    if (!labelPoint) {
+                      return null
+                    }
+                    const label =
+                      lat === 0
+                        ? 'Equator'
+                        : `${Math.abs(lat)}deg${lat > 0 ? 'N' : 'S'}`
+                    return (
+                      <text
+                        key={`label-${lat}`}
+                        x={labelPoint[0]}
+                        y={labelPoint[1] - 6}
+                      >
+                        {label}
+                      </text>
+                    )
+                  })}
+                </g>
+
+                <g className="countries">
+                  {orderedCountries.map((country) => {
+                    const [cx, cy] = country.centroidScreen
+                    const currentLat = getCurrentLat(country)
+                    const currentScale = getMercatorScale(
+                      country.originalCentroid[1],
+                      currentLat
+                    )
+                    const transform = `translate(${country.offset.x}, ${
+                      country.offset.y
+                    }) translate(${cx}, ${cy}) scale(${
+                      currentScale
+                    }) translate(${-cx}, ${-cy})`
+                    return (
+                      <g
+                        key={country.id}
+                        className={`country-group ${
+                          selectedId === country.id ? 'is-selected' : ''
+                        } ${draggingId === country.id ? 'is-dragging' : ''}`}
+                        transform={transform}
+                        onPointerDown={(event) =>
+                          handlePointerDown(event, country)
+                        }
+                        onPointerMove={(event) =>
+                          handlePointerMove(event, country.id)
+                        }
+                        onPointerUp={(event) =>
+                          handlePointerUp(event, country.id)
+                        }
+                        onPointerCancel={(event) =>
+                          handlePointerUp(event, country.id)
+                        }
+                        role="button"
+                        aria-label={`Drag ${country.name}`}
+                      >
+                        <path
+                          className="country-shape"
+                          d={pathGenerator(country.feature) ?? ''}
+                          fill={country.color}
+                        />
+                      </g>
+                    )
+                  })}
+                </g>
+              </svg>
+            )}
+          </div>
+
+          <div className="map-footer">
+            <div className="legend">
+              {countries.map((country) => (
+                <button
+                  key={`legend-${country.id}`}
+                  className={`legend-item ${
+                    selectedId === country.id ? 'is-active' : ''
+                  }`}
+                  type="button"
+                  onClick={() => setSelectedId(country.id)}
+                >
+                  <span
+                    className="legend-swatch"
+                    style={{ backgroundColor: country.color }}
+                    aria-hidden="true"
+                  />
+                  {country.name}
+                </button>
+              ))}
+            </div>
+            <p className="map-hint">
+              Tip: Move Greenland down near DR Congo to compare the contrast.
+            </p>
+          </div>
+        </section>
+
+        <aside className="info-panel">
+          <div className="panel-title">Selected country</div>
+          {selectedCountry && selectedDetails ? (
+            <div className="panel-content">
+              <div className="country-title">
+                <span
+                  className="color-dot"
+                  style={{ backgroundColor: selectedCountry.color }}
+                />
+                <h3>{selectedCountry.name}</h3>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Original latitude</span>
+                <span className="metric-value">
+                  {formatLatitude(selectedDetails.originalLat)}
+                </span>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Current latitude</span>
+                <span className="metric-value">
+                  {formatLatitude(selectedDetails.currentLat)}
+                </span>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Mercator scale factor</span>
+                <span className="metric-value">
+                  {formatScale(selectedDetails.currentScale)} of original size
+                </span>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Area</span>
+                <span className="metric-value">
+                  {areaFormatter.format(selectedCountry.area)} km²
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="panel-empty">
+              Select a country to inspect its latitude and scale.
+            </div>
+          )}
+          <div className="panel-foot">
+            Dragging shifts latitude, which updates the Mercator inflation in
+            real time.
+          </div>
+        </aside>
+      </main>
+    </div>
   )
 }
 

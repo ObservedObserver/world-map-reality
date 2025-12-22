@@ -6,10 +6,8 @@ import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
 import './App.css'
 
-const WORLD_TOPO_URL =
-  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
-const WORLD_NAMES_URL =
-  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.tsv'
+const WORLD_TOPO_URL = '/data/countries-110m.json'
+const WORLD_NAMES_URL = '/data/countries-110m.tsv'
 
 const MAP_WIDTH = 1100
 const MAP_HEIGHT = 650
@@ -149,34 +147,46 @@ function App() {
     let cancelled = false
     const controller = new AbortController()
 
+    const loadCountryNames = async () => {
+      const nameLookup = new Map<string, string>()
+      try {
+        const response = await fetch(WORLD_NAMES_URL, {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          return nameLookup
+        }
+        const namesText = await response.text()
+        const rows = d3.tsvParse(namesText)
+        rows.forEach((row) => {
+          const id = row.iso_n3 ?? row.un_a3 ?? row.iso_a3
+          const name = row.name ?? row.name_long
+          if (id && name) {
+            const rawId = String(id)
+            nameLookup.set(rawId, String(name))
+            nameLookup.set(normalizeId(rawId), String(name))
+          }
+        })
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw err
+        }
+      }
+      return nameLookup
+    }
+
     const loadData = async () => {
       try {
         setLoading(true)
-        const [topoResult, namesResult] = await Promise.allSettled([
-          fetch(WORLD_TOPO_URL, { signal: controller.signal }),
-          fetch(WORLD_NAMES_URL, { signal: controller.signal }),
-        ])
-
-        if (topoResult.status !== 'fulfilled' || !topoResult.value.ok) {
+        const topoResponse = await fetch(WORLD_TOPO_URL, {
+          signal: controller.signal,
+        })
+        if (!topoResponse.ok) {
           throw new Error('Unable to load map data.')
         }
 
-        const nameLookup = new Map<string, string>()
-        if (namesResult.status === 'fulfilled' && namesResult.value.ok) {
-          const namesText = await namesResult.value.text()
-          const rows = d3.tsvParse(namesText)
-          rows.forEach((row) => {
-            const id = row.id
-            const name = row.name
-            if (id && name) {
-              const rawId = String(id)
-              nameLookup.set(rawId, String(name))
-              nameLookup.set(normalizeId(rawId), String(name))
-            }
-          })
-        }
-
-        const topoData = (await topoResult.value.json()) as CountriesTopology
+        const nameLookup = await loadCountryNames()
+        const topoData = (await topoResponse.json()) as CountriesTopology
         const countriesObject = topoData.objects?.countries
         if (!countriesObject) {
           throw new Error('Unexpected map data format.')

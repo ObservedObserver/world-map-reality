@@ -444,13 +444,22 @@ function App() {
               Drag any colored country anywhere on the map. The size updates
               based on its new latitude, just like Mercator does.
             </p>
-            <button
-              className="reset-button"
-              type="button"
-              onClick={resetPositions}
-            >
-              Reset positions
-            </button>
+            <div className="map-header-actions">
+              <button
+                className="reset-button"
+                type="button"
+                onClick={resetPositions}
+              >
+                Reset positions
+              </button>
+              <a
+                className="github-button"
+                href="https://github.com/ObservedObserver/world-map-reality"
+                target="_blank"
+              >
+                View on GitHub
+              </a>
+            </div>
           </div>
 
           <div className="map-frame">

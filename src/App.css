@@ -96,9 +96,14 @@
   color: var(--mist);
 }
 
-.reset-button {
-  align-self: flex-start;
+.map-header-actions {
+  display: flex;
+  gap: 10px;
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.reset-button {
   border: 1px solid rgba(248, 245, 239, 0.25);
   background: rgba(12, 26, 48, 0.7);
   color: #ffffff;
@@ -110,6 +115,25 @@
 }
 
 .reset-button:hover {
+  border-color: rgba(248, 245, 239, 0.45);
+  background: rgba(18, 40, 68, 0.85);
+  transform: translateY(-1px);
+}
+
+.github-button {
+  border: 1px solid rgba(248, 245, 239, 0.25);
+  background: rgba(12, 26, 48, 0.7);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.github-button:hover {
   border-color: rgba(248, 245, 239, 0.45);
   background: rgba(18, 40, 68, 0.85);
   transform: translateY(-1px);

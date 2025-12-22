@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson'
+import type { Feature, FeatureCollection, GeoJsonProperties, Geometry, LineString } from 'geojson'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
@@ -217,8 +217,8 @@ function App() {
                 `Country ${id}`,
               area: meta?.area ?? null,
               feature,
-              originalCentroid: [lng, lat],
-              centroidScreen: [projected[0], projected[1]],
+              originalCentroid: [lng, lat] as [number, number],
+              centroidScreen: [projected[0], projected[1]] as [number, number],
               offset: { x: 0, y: 0 },
               color: getCountryColor(id),
             }
@@ -400,7 +400,7 @@ function App() {
       cx + country.offset.x,
       cy + country.offset.y,
     ]
-    const inverted = projection.invert(currentPoint)
+    const inverted = projection.invert?.(currentPoint)
     return inverted ? inverted[1] : country.originalCentroid[1]
   }
 
@@ -420,7 +420,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-copy">
-          <p className="eyebrow">Mercator True Size Demo</p>
+          <p className="eyebrow">Mercator True Size Playground</p>
           <h1>Drag countries to compare Mercator sizes by latitude.</h1>
           <p className="subhead">
             Mercator inflates shapes near the poles. Drag a country to a new
@@ -497,13 +497,13 @@ function App() {
 
                 <g className="lat-lines">
                   {latLines.map((lat) => {
-                    const line = {
+                    const line: LineString = {
                       type: 'LineString',
                       coordinates: [
                         [-180, lat],
                         [180, lat],
                       ],
-                    } as const
+                    }
                     const path = pathGenerator(line)
                     if (!path) {
                       return null

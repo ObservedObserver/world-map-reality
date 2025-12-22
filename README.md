@@ -1,21 +1,8 @@
-# React + TypeScript + Vite
+# True size of countries
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An interactive map that you can compare true size of countries with drag and drop.
 
-While this project uses React, Vite supports many popular JS frameworks. [See all the supported frameworks](https://vitejs.dev/guide/#scaffolding-your-first-vite-project).
+https://github.com/user-attachments/assets/c1ecc10a-5b85-4c5e-8dde-c6cdc5ca317c
 
-## Deploy Your Own
+[Online playground](https://www.runcell.dev/tool/true-size-map)
 
-Deploy your own Vite project with Vercel.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/examples/tree/main/framework-boilerplates/vite-react&template=vite-react)
-
-_Live Example: https://vite-react-example.vercel.app_
-
-### Deploying From Your Terminal
-
-You can deploy your new Vite project with a single command from your terminal using [Vercel CLI](https://vercel.com/download):
-
-```shell
-$ vercel
-```

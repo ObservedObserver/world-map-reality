@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import * as d3 from 'd3'
@@ -81,6 +81,7 @@ type CountryDatum = {
 
 type DragState = {
   id: string
+  pointerId: number
   start: { x: number; y: number }
   origin: { x: number; y: number }
   centroid: [number, number]
@@ -303,8 +304,54 @@ function App() {
     )
   }
 
+  const handleDragMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragState.current || dragState.current.pointerId !== event.pointerId) {
+        return
+      }
+      const dx = event.clientX - dragState.current.start.x
+      const dy = event.clientY - dragState.current.start.y
+      const nextOffset = {
+        x: dragState.current.origin.x + dx,
+        y: dragState.current.origin.y + dy,
+      }
+
+      const centroidX = dragState.current.centroid[0]
+      const centroidY = dragState.current.centroid[1]
+      const clampedCentroidX = Math.min(
+        Math.max(centroidX + nextOffset.x, MAP_PADDING),
+        MAP_WIDTH - MAP_PADDING
+      )
+      const clampedCentroidY = Math.min(
+        Math.max(centroidY + nextOffset.y, MAP_PADDING),
+        MAP_HEIGHT - MAP_PADDING
+      )
+      const clampedOffset = {
+        x: clampedCentroidX - centroidX,
+        y: clampedCentroidY - centroidY,
+      }
+
+      setCountries((prev) =>
+        prev.map((country) =>
+          country.id === dragState.current?.id
+            ? { ...country, offset: clampedOffset }
+            : country
+        )
+      )
+    },
+    [setCountries]
+  )
+
+  const handleDragEnd = useCallback((event: PointerEvent) => {
+    if (!dragState.current || dragState.current.pointerId !== event.pointerId) {
+      return
+    }
+    dragState.current = null
+    setDraggingId(null)
+  }, [])
+
   const handlePointerDown = (
-    event: PointerEvent<SVGGElement>,
+    event: ReactPointerEvent<SVGGElement>,
     country: CountryDatum
   ) => {
     event.preventDefault()
@@ -312,9 +359,9 @@ function App() {
       setSelectedId(country.id)
       return
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
     dragState.current = {
       id: country.id,
+      pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       origin: { x: country.offset.x, y: country.offset.y },
       centroid: country.centroidScreen,
@@ -323,53 +370,19 @@ function App() {
     setDraggingId(country.id)
   }
 
-  const handlePointerMove = (
-    event: PointerEvent<SVGGElement>,
-    id: string
-  ) => {
-    if (!dragState.current || dragState.current.id !== id) {
+  useEffect(() => {
+    if (!draggingId) {
       return
     }
-    const dx = event.clientX - dragState.current.start.x
-    const dy = event.clientY - dragState.current.start.y
-    const nextOffset = {
-      x: dragState.current.origin.x + dx,
-      y: dragState.current.origin.y + dy,
+    window.addEventListener('pointermove', handleDragMove)
+    window.addEventListener('pointerup', handleDragEnd)
+    window.addEventListener('pointercancel', handleDragEnd)
+    return () => {
+      window.removeEventListener('pointermove', handleDragMove)
+      window.removeEventListener('pointerup', handleDragEnd)
+      window.removeEventListener('pointercancel', handleDragEnd)
     }
-
-    const centroidX = dragState.current.centroid[0]
-    const centroidY = dragState.current.centroid[1]
-    const clampedCentroidX = Math.min(
-      Math.max(centroidX + nextOffset.x, MAP_PADDING),
-      MAP_WIDTH - MAP_PADDING
-    )
-    const clampedCentroidY = Math.min(
-      Math.max(centroidY + nextOffset.y, MAP_PADDING),
-      MAP_HEIGHT - MAP_PADDING
-    )
-    const clampedOffset = {
-      x: clampedCentroidX - centroidX,
-      y: clampedCentroidY - centroidY,
-    }
-
-    setCountries((prev) =>
-      prev.map((country) =>
-        country.id === id ? { ...country, offset: clampedOffset } : country
-      )
-    )
-  }
-
-  const handlePointerUp = (
-    event: PointerEvent<SVGGElement>,
-    id: string
-  ) => {
-    if (dragState.current?.id !== id) {
-      return
-    }
-    dragState.current = null
-    setDraggingId(null)
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }
+  }, [draggingId, handleDragMove, handleDragEnd])
 
   const getCurrentLat = (country: CountryDatum) => {
     const [cx, cy] = country.centroidScreen
@@ -542,15 +555,6 @@ function App() {
                         transform={transform}
                         onPointerDown={(event) =>
                           handlePointerDown(event, country)
-                        }
-                        onPointerMove={(event) =>
-                          handlePointerMove(event, country.id)
-                        }
-                        onPointerUp={(event) =>
-                          handlePointerUp(event, country.id)
-                        }
-                        onPointerCancel={(event) =>
-                          handlePointerUp(event, country.id)
                         }
                         role="button"
                         aria-label={`Drag ${country.name}`}

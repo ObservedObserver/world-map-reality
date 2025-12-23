@@ -13,18 +13,7 @@ const MAP_WIDTH = 1100
 const MAP_HEIGHT = 650
 const MAP_PADDING = 40
 
-const COUNTRY_ORDER: Array<string | number> = [
-  304,
-  643,
-  124,
-  '840-AK',
-  840,
-  76,
-  356,
-  180,
-  36,
-  392,
-]
+const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36, 392]
 
 const COUNTRY_META: Record<number, { name: string; area: number }> = {
   304: { name: 'Greenland', area: 2166086 },
@@ -71,53 +60,128 @@ const normalizeId = (value: string | number) => {
   return stripped === '' ? '0' : stripped
 }
 
-const ALASKA_LAT_THRESHOLD = 50
+type LonLat = [number, number]
+type Vec3 = [number, number, number]
 
-const splitUnitedStatesFeature = (
-  feature: CountryFeature
-): CountryFeature[] => {
-  const isUnitedStates = Number(feature.id) === 840
-  if (
-    !isUnitedStates ||
-    !feature.geometry ||
-    feature.geometry.type !== 'MultiPolygon'
-  ) {
-    return [feature]
+const DEG_TO_RAD = Math.PI / 180
+const RAD_TO_DEG = 180 / Math.PI
+const ROTATION_EPSILON = 1e-6
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max)
+
+const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
+  const lambda = lon * DEG_TO_RAD
+  const phi = lat * DEG_TO_RAD
+  const cosPhi = Math.cos(phi)
+  return [
+    cosPhi * Math.cos(lambda),
+    cosPhi * Math.sin(lambda),
+    Math.sin(phi),
+  ]
+}
+
+const vectorToLonLat = ([x, y, z]: Vec3): LonLat => {
+  const lon = Math.atan2(y, x) * RAD_TO_DEG
+  const hyp = Math.sqrt(x * x + y * y)
+  const lat = Math.atan2(z, hyp) * RAD_TO_DEG
+  return [lon, lat]
+}
+
+const cross = (a: Vec3, b: Vec3): Vec3 => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+]
+
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+const normalize = (value: Vec3): Vec3 => {
+  const length = Math.hypot(value[0], value[1], value[2])
+  if (length < ROTATION_EPSILON) {
+    return [0, 0, 0]
+  }
+  return [value[0] / length, value[1] / length, value[2] / length]
+}
+
+// Rotate coordinates on the sphere so the feature centroid moves to the drag target.
+const createSphericalRotation = (from: LonLat, to: LonLat) => {
+  const fromVec = lonLatToVector(from)
+  const toVec = lonLatToVector(to)
+  const rawDot = clamp(dot(fromVec, toVec), -1, 1)
+  const angle = Math.acos(rawDot)
+  if (angle < ROTATION_EPSILON) {
+    return (coordinate: LonLat) => coordinate
   }
 
-  const alaskaPolygons: typeof feature.geometry.coordinates = []
-  const lowerPolygons: typeof feature.geometry.coordinates = []
+  let axis = cross(fromVec, toVec)
+  if (Math.hypot(axis[0], axis[1], axis[2]) < ROTATION_EPSILON) {
+    const fallback: Vec3 =
+      Math.abs(fromVec[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]
+    axis = cross(fromVec, fallback)
+  }
+  axis = normalize(axis)
 
-  feature.geometry.coordinates.forEach((polygon) => {
-    const centroid = d3.geoCentroid({
-      type: 'Feature',
-      properties: feature.properties ?? {},
-      geometry: { type: 'Polygon', coordinates: polygon },
-    })
-    if (centroid[1] > ALASKA_LAT_THRESHOLD) {
-      alaskaPolygons.push(polygon)
-    } else {
-      lowerPolygons.push(polygon)
-    }
-  })
+  const sinAngle = Math.sin(angle)
+  const cosAngle = Math.cos(angle)
+  const oneMinusCos = 1 - cosAngle
 
-  if (alaskaPolygons.length === 0 || lowerPolygons.length === 0) {
-    return [feature]
+  return ([lon, lat]: LonLat): LonLat => {
+    const vec = lonLatToVector([lon, lat])
+    const crossAxis = cross(axis, vec)
+    const dotAxis = dot(axis, vec)
+    const rotated: Vec3 = [
+      vec[0] * cosAngle + crossAxis[0] * sinAngle + axis[0] * dotAxis * oneMinusCos,
+      vec[1] * cosAngle + crossAxis[1] * sinAngle + axis[1] * dotAxis * oneMinusCos,
+      vec[2] * cosAngle + crossAxis[2] * sinAngle + axis[2] * dotAxis * oneMinusCos,
+    ]
+    return vectorToLonLat(rotated)
+  }
+}
+
+const rotateGeometry = (geometry: Geometry, rotate: (coord: LonLat) => LonLat): Geometry => {
+  const rotatePosition = (coord: number[]) => {
+    const [lon, lat] = rotate([coord[0], coord[1]])
+    return coord.length > 2 ? [lon, lat, ...coord.slice(2)] : [lon, lat]
   }
 
-  const lower48: CountryFeature = {
-    ...feature,
-    geometry: { type: 'MultiPolygon', coordinates: lowerPolygons },
+  switch (geometry.type) {
+    case 'Point':
+      return {
+        ...geometry,
+        coordinates: rotatePosition(geometry.coordinates as number[]),
+      }
+    case 'MultiPoint':
+    case 'LineString':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][]).map(rotatePosition),
+      }
+    case 'MultiLineString':
+    case 'Polygon':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][][]).map((line) =>
+          line.map(rotatePosition)
+        ),
+      }
+    case 'MultiPolygon':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][][][]).map((polygon) =>
+          polygon.map((ring) => ring.map(rotatePosition))
+        ),
+      }
+    case 'GeometryCollection':
+      return {
+        ...geometry,
+        geometries: geometry.geometries.map((geom) =>
+          rotateGeometry(geom, rotate)
+        ),
+      }
+    default:
+      return geometry
   }
-
-  const alaska: CountryFeature = {
-    ...feature,
-    id: '840-AK',
-    properties: { ...(feature.properties ?? {}), name: 'Alaska' },
-    geometry: { type: 'MultiPolygon', coordinates: alaskaPolygons },
-  }
-
-  return [lower48, alaska]
 }
 
 type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
@@ -258,9 +322,8 @@ function App() {
         ) as FeatureCollection<Geometry, GeoJsonProperties>
 
         const allFeatures = collection.features as CountryFeature[]
-        const splitFeatures = allFeatures.flatMap(splitUnitedStatesFeature)
 
-        const prepared: CountryDatum[] = splitFeatures
+        const prepared: CountryDatum[] = allFeatures
           .filter((feature) => feature.id !== undefined && feature.id !== null)
           .map((feature) => {
             const rawId = feature.id as string | number
@@ -296,7 +359,7 @@ function App() {
 
         if (!cancelled) {
           setCountries(prepared)
-          setWorldFeatures(splitFeatures)
+          setWorldFeatures(allFeatures)
           setSelectedId(initialDraggableIds[0] ?? prepared[0]?.id ?? null)
           setDraggableIds(initialDraggableIds)
           setLoading(false)
@@ -455,19 +518,22 @@ function App() {
     }
   }, [draggingId, handleDragMove, handleDragEnd])
 
-  const getCurrentLat = (country: CountryDatum) => {
+  const getCurrentCoordinates = (country: CountryDatum): LonLat => {
     const [cx, cy] = country.centroidScreen
     const currentPoint: [number, number] = [
       cx + country.offset.x,
       cy + country.offset.y,
     ]
     const inverted = projection.invert?.(currentPoint)
-    return inverted ? inverted[1] : country.originalCentroid[1]
+    if (!inverted) {
+      return country.originalCentroid
+    }
+    return [inverted[0], inverted[1]]
   }
 
   const selectedDetails = selectedCountry
     ? (() => {
-        const currentLat = getCurrentLat(selectedCountry)
+        const [, currentLat] = getCurrentCoordinates(selectedCountry)
         const originalLat = selectedCountry.originalCentroid[1]
         return {
           originalLat,
@@ -619,18 +685,19 @@ function App() {
 
                 <g className="countries">
                   {orderedCountries.map((country) => {
-                    const [cx, cy] = country.centroidScreen
-                    const currentLat = getCurrentLat(country)
-                    const currentScale = getMercatorScale(
-                      country.originalCentroid[1],
-                      currentLat
+                    const currentCoordinates = getCurrentCoordinates(country)
+                    const rotation = createSphericalRotation(
+                      country.originalCentroid,
+                      currentCoordinates
                     )
+                    const rotatedGeometry = country.feature.geometry
+                      ? rotateGeometry(country.feature.geometry, rotation)
+                      : country.feature.geometry
+                    const rotatedFeature: CountryFeature = {
+                      ...country.feature,
+                      geometry: rotatedGeometry,
+                    }
                     const isDraggable = draggableIds.includes(country.id)
-                    const transform = `translate(${country.offset.x}, ${
-                      country.offset.y
-                    }) translate(${cx}, ${cy}) scale(${
-                      currentScale
-                    }) translate(${-cx}, ${-cy})`
                     return (
                       <g
                         key={country.id}
@@ -639,7 +706,6 @@ function App() {
                         } ${draggingId === country.id ? 'is-dragging' : ''} ${
                           isDraggable ? '' : 'is-disabled'
                         }`}
-                        transform={transform}
                         onPointerDown={(event) =>
                           handlePointerDown(event, country)
                         }
@@ -648,7 +714,7 @@ function App() {
                       >
                         <path
                           className="country-shape"
-                          d={pathGenerator(country.feature) ?? ''}
+                          d={pathGenerator(rotatedFeature) ?? ''}
                           fill={country.color}
                         />
                       </g>

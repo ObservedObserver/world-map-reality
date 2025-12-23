@@ -2,7 +2,8 @@
 
 An interactive map that you can compare true size of countries with drag and drop.
 
-https://github.com/user-attachments/assets/c1ecc10a-5b85-4c5e-8dde-c6cdc5ca317c
+
+https://github.com/user-attachments/assets/548db03a-6b04-49a5-a41c-32a8cb9c4764
 
 [Online playground](https://www.runcell.dev/tool/true-size-map)
 

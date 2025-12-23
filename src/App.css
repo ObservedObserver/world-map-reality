@@ -445,6 +445,31 @@
   padding-top: 12px;
 }
 
+.app-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(248, 245, 239, 0.12);
+  text-align: center;
+  animation: fadeUp 0.9s ease 0.4s both;
+}
+
+.app-footer p {
+  margin: 0;
+  color: var(--mist);
+  font-size: 0.85rem;
+}
+
+.app-footer a {
+  color: var(--gold);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.app-footer a:hover {
+  color: #ffd166;
+  text-decoration: underline;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

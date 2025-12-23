@@ -520,6 +520,13 @@ function App() {
               >
                 View on GitHub
               </a>
+              <a
+                className="github-button"
+                href="https://www.runcell.dev"
+                target="_blank"
+              >
+                Home
+              </a>
             </div>
           </div>
 
@@ -772,6 +779,15 @@ function App() {
           </div>
         </aside>
       </main>
+
+      <footer className="app-footer">
+        <p>
+          Built by the creator of{' '}
+          <a href="https://www.runcell.dev" target="_blank" rel="noopener noreferrer">
+            runcell
+          </a>
+        </p>
+      </footer>
     </div>
   )
 }

@@ -13,7 +13,18 @@ const MAP_WIDTH = 1100
 const MAP_HEIGHT = 650
 const MAP_PADDING = 40
 
-const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36, 392]
+const COUNTRY_ORDER: Array<string | number> = [
+  304,
+  643,
+  124,
+  '840-AK',
+  840,
+  76,
+  356,
+  180,
+  36,
+  392,
+]
 
 const COUNTRY_META: Record<number, { name: string; area: number }> = {
   304: { name: 'Greenland', area: 2166086 },
@@ -58,6 +69,55 @@ const normalizeId = (value: string | number) => {
   const raw = String(value)
   const stripped = raw.replace(/^0+/, '')
   return stripped === '' ? '0' : stripped
+}
+
+const ALASKA_LAT_THRESHOLD = 50
+
+const splitUnitedStatesFeature = (
+  feature: CountryFeature
+): CountryFeature[] => {
+  const isUnitedStates = Number(feature.id) === 840
+  if (
+    !isUnitedStates ||
+    !feature.geometry ||
+    feature.geometry.type !== 'MultiPolygon'
+  ) {
+    return [feature]
+  }
+
+  const alaskaPolygons: typeof feature.geometry.coordinates = []
+  const lowerPolygons: typeof feature.geometry.coordinates = []
+
+  feature.geometry.coordinates.forEach((polygon) => {
+    const centroid = d3.geoCentroid({
+      type: 'Feature',
+      properties: feature.properties ?? {},
+      geometry: { type: 'Polygon', coordinates: polygon },
+    })
+    if (centroid[1] > ALASKA_LAT_THRESHOLD) {
+      alaskaPolygons.push(polygon)
+    } else {
+      lowerPolygons.push(polygon)
+    }
+  })
+
+  if (alaskaPolygons.length === 0 || lowerPolygons.length === 0) {
+    return [feature]
+  }
+
+  const lower48: CountryFeature = {
+    ...feature,
+    geometry: { type: 'MultiPolygon', coordinates: lowerPolygons },
+  }
+
+  const alaska: CountryFeature = {
+    ...feature,
+    id: '840-AK',
+    properties: { ...(feature.properties ?? {}), name: 'Alaska' },
+    geometry: { type: 'MultiPolygon', coordinates: alaskaPolygons },
+  }
+
+  return [lower48, alaska]
 }
 
 type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
@@ -198,8 +258,9 @@ function App() {
         ) as FeatureCollection<Geometry, GeoJsonProperties>
 
         const allFeatures = collection.features as CountryFeature[]
+        const splitFeatures = allFeatures.flatMap(splitUnitedStatesFeature)
 
-        const prepared: CountryDatum[] = allFeatures
+        const prepared: CountryDatum[] = splitFeatures
           .filter((feature) => feature.id !== undefined && feature.id !== null)
           .map((feature) => {
             const rawId = feature.id as string | number
@@ -235,7 +296,7 @@ function App() {
 
         if (!cancelled) {
           setCountries(prepared)
-          setWorldFeatures(allFeatures)
+          setWorldFeatures(splitFeatures)
           setSelectedId(initialDraggableIds[0] ?? prepared[0]?.id ?? null)
           setDraggableIds(initialDraggableIds)
           setLoading(false)

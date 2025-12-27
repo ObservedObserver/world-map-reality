@@ -548,7 +548,7 @@ function App() {
       <header className="app-header">
         <div className="header-copy">
           <p className="eyebrow">Mercator True Size Playground</p>
-          <h1>Drag countries to compare Mercator sizes by latitude.</h1>
+          <h1>The True Size of Countries (Mercator Map)</h1>
           <p className="subhead">
             Mercator inflates shapes near the poles. Drag a country to a new
             latitude and it resizes as if it belonged there.

@@ -4,11 +4,70 @@
     <meta charset="UTF-8" />
     <link rel="canonical" href="https://www.runcell.dev/tool/true-size-map" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The True Size of Countries — Interactive Mercator Projection Playground</title>
+    <title>The True Size of Countries — See Real Scale on a Mercator Map</title>
     <meta
       name="description"
-      content="Drag countries on a Mercator map to see how scale changes by latitude. Compare true size versus projection distortion with live resizing."
+      content="The True Size of Countries: drag nations on a Mercator world map to reveal projection distortion and compare true size at different latitudes in real time."
     />
+    <meta
+      property="og:title"
+      content="The True Size of Countries — See Real Scale on a Mercator Map"
+    />
+    <meta
+      property="og:description"
+      content="The True Size of Countries: drag nations on a Mercator world map to reveal projection distortion and compare true size at different latitudes in real time."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.runcell.dev/tool/true-size-map" />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="The True Size of Countries — See Real Scale on a Mercator Map"
+    />
+    <meta
+      name="twitter:description"
+      content="The True Size of Countries: drag nations on a Mercator world map to reveal projection distortion and compare true size at different latitudes in real time."
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Greenland bigger than Africa?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Greenland is about 2.16 million km², while Africa is about 30.37 million km². On a Mercator map, Greenland looks much larger than it really is because distortion increases toward the poles."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Greenland bigger than the United States?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Greenland is about 2.16 million km², while the United States is about 9.83 million km². Mercator projection exaggerates high-latitude areas like Greenland, making them appear closer in size than they are."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do countries look bigger near the poles on world maps?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Many common maps use the Mercator projection. Mercator preserves angles for navigation, but it inflates areas as latitude increases, so regions closer to the poles appear much larger than their true size."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does “true size of countries” mean on this map?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It means comparing how large countries really are versus how large they appear on a Mercator projection. This playground lets you drag countries to different latitudes to see how the projection’s scale factor changes their apparent size."
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

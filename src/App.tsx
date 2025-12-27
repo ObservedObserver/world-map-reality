@@ -6,8 +6,8 @@ import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
 import './App.css'
 
-const WORLD_TOPO_URL = '/data/countries-110m.json'
-const WORLD_NAMES_URL = '/data/countries-110m.tsv'
+const WORLD_TOPO_URL = `${import.meta.env.BASE_URL}data/countries-110m.json`
+const WORLD_NAMES_URL = `${import.meta.env.BASE_URL}data/countries-110m.tsv`
 
 const MAP_WIDTH = 1100
 const MAP_HEIGHT = 650

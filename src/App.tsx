@@ -89,7 +89,11 @@ const GLOBE_DRAG_SENSITIVITY = 0.25
 const MAX_GLOBE_TILT = 80
 const PLANET_PREVIEW_SIZE = 260
 const PLANET_PADDING = 16
+const PLANET_BASE_RADIUS = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
 const PLANET_DEFAULT_ROTATION: Vec3 = [-28, -12, 0]
+const PLANET_ZOOM_MIN = 0.6
+const PLANET_ZOOM_MAX = 2.4
+const PLANET_ZOOM_STEP = 0.18
 const MAX_LATITUDE = 89.9
 
 const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
@@ -350,6 +354,7 @@ function App() {
   const [planetRotation, setPlanetRotation] = useState<Vec3>(
     PLANET_DEFAULT_ROTATION
   )
+  const [planetZoom, setPlanetZoom] = useState(1)
   const [globeRotation, setGlobeRotation] = useState<Vec3>(
     GLOBE_DEFAULT_ROTATION
   )
@@ -414,12 +419,12 @@ function App() {
     () =>
       d3
         .geoOrthographic()
-        .scale(PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING)
+        .scale(PLANET_BASE_RADIUS * planetZoom)
         .translate([PLANET_PREVIEW_SIZE / 2, PLANET_PREVIEW_SIZE / 2])
         .clipAngle(90)
         .precision(0.3)
         .rotate(planetRotation),
-    [planetRotation]
+    [planetRotation, planetZoom]
   )
 
   const planetPathGenerator = useMemo(
@@ -433,11 +438,6 @@ function App() {
     []
   )
   const planetGraticule = useMemo(() => d3.geoGraticule10(), [])
-  const planetSphere = useMemo(
-    () => ({ type: 'Sphere' } as unknown as d3.GeoPermissibleObjects),
-    []
-  )
-
   const latLines = useMemo(() => d3.range(-80, 81, 20), [])
 
   const mapLatLines = useMemo(
@@ -655,10 +655,13 @@ function App() {
     () => (planetTexture ? `${SOLAR_BASE_URL}${planetTexture}` : null),
     [planetTexture]
   )
+  const planetRadius = PLANET_BASE_RADIUS * planetZoom
   const planetCountry =
     planetCountryId
       ? countries.find((country) => country.id === planetCountryId) ?? null
       : null
+  const canPlanetZoomIn = planetZoom < PLANET_ZOOM_MAX - 0.001
+  const canPlanetZoomOut = planetZoom > PLANET_ZOOM_MIN + 0.001
 
   const drawPlanetTexture = useCallback(() => {
     const canvas = planetCanvasRef.current
@@ -675,7 +678,7 @@ function App() {
       canvas.height = size
     }
     context.clearRect(0, 0, size, size)
-    const radius = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
+    const radius = planetRadius
     const radiusSquared = radius * radius
     const center = size / 2
     const baseColor: [number, number, number] = [10, 18, 36]
@@ -715,7 +718,7 @@ function App() {
       }
     }
     context.putImageData(imageData, 0, 0)
-  }, [planetProjection])
+  }, [planetProjection, planetRadius])
 
   useEffect(() => {
     if (!planetTextureUrl) {
@@ -873,6 +876,7 @@ function App() {
   const resetGlobeRotation = useCallback(() => {
     setGlobeRotation(GLOBE_DEFAULT_ROTATION)
     setPlanetRotation(PLANET_DEFAULT_ROTATION)
+    setPlanetZoom(1)
     setPlanetCountryId(null)
     setPlanetCountryCentroid(null)
     globeDragState.current = null
@@ -887,6 +891,14 @@ function App() {
         globeCentroid: country.originalCentroid,
       }))
     )
+  }, [])
+
+  const handlePlanetZoomIn = useCallback(() => {
+    setPlanetZoom((prev) => Math.min(PLANET_ZOOM_MAX, prev + PLANET_ZOOM_STEP))
+  }, [])
+
+  const handlePlanetZoomOut = useCallback(() => {
+    setPlanetZoom((prev) => Math.max(PLANET_ZOOM_MIN, prev - PLANET_ZOOM_STEP))
   }, [])
 
   const toggleGlobeFullscreen = useCallback(() => {
@@ -1048,7 +1060,7 @@ function App() {
       }
       const x = ((clientX - rect.left) / rect.width) * PLANET_PREVIEW_SIZE
       const y = ((clientY - rect.top) / rect.height) * PLANET_PREVIEW_SIZE
-      const radius = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
+      const radius = planetRadius
       const dx = x - PLANET_PREVIEW_SIZE / 2
       const dy = y - PLANET_PREVIEW_SIZE / 2
       if (dx * dx + dy * dy > radius * radius) {
@@ -1060,7 +1072,7 @@ function App() {
       }
       return [inverted[0], inverted[1]]
     },
-    [planetProjection]
+    [planetProjection, planetRadius]
   )
 
   const handleGlobeMove = useCallback(
@@ -1487,7 +1499,6 @@ function App() {
           globeSphere={globeSphere}
           globeGraticule={globeGraticule}
           planetPathGenerator={planetPathGenerator}
-          planetSphere={planetSphere}
           planetGraticule={planetGraticule}
           globeHighlightCountries={globeHighlightCountries}
           globeActiveMode={globeActiveMode}
@@ -1498,6 +1509,9 @@ function App() {
           activePlanet={activePlanet}
           activePlanetId={activePlanetId}
           planetRatio={planetRatio}
+          planetZoom={planetZoom}
+          canPlanetZoomIn={canPlanetZoomIn}
+          canPlanetZoomOut={canPlanetZoomOut}
           planetCountry={planetCountry}
           planetCountryFeature={planetCountryFeature}
           areaFormatter={areaFormatter}
@@ -1509,6 +1523,7 @@ function App() {
           planetSvgRef={planetSvgRef}
           globeSize={GLOBE_SIZE}
           planetPreviewSize={PLANET_PREVIEW_SIZE}
+          planetRadius={planetRadius}
           onResetScene={resetGlobeRotation}
           onCenterSelected={() =>
             selectedCountry ? focusOnCountry(selectedCountry) : null
@@ -1520,6 +1535,8 @@ function App() {
           onGlobeCountryPointerDown={handleGlobeCountryPointerDown}
           onPlanetPointerDown={handlePlanetPointerDown}
           onPlanetCountryPointerDown={handlePlanetCountryPointerDown}
+          onPlanetZoomIn={handlePlanetZoomIn}
+          onPlanetZoomOut={handlePlanetZoomOut}
           onSelectPlanet={setActivePlanetId}
           onFocusCountry={focusOnCountry}
           formatLatitude={formatLatitude}

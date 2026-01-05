@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Feature, FeatureCollection, GeoJsonProperties, Geometry, LineString } from 'geojson'
+import type { FeatureCollection, GeoJsonProperties, Geometry, LineString } from 'geojson'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
+import type {
+  CountryDatum,
+  CountryFeature,
+  GlobeHighlightCountry,
+  LonLat,
+  MapRenderedCountry,
+  SelectedDetails,
+  Vec3,
+} from './types'
+import { EARTH_DIAMETER_KM, PLANETS, PLANET_TEXTURES } from './solar'
+import type { Planet } from './solar'
+import GlobeView from './components/GlobeView'
+import MapView from './components/MapView'
 import './App.css'
 
 const WORLD_TOPO_URL = `${import.meta.env.BASE_URL}data/countries-110m.json`
@@ -60,22 +73,7 @@ const normalizeId = (value: string | number) => {
   return stripped === '' ? '0' : stripped
 }
 
-type LonLat = [number, number]
-type Vec3 = [number, number, number]
-type Planet = (typeof PLANETS)[number]
-
 const SOLAR_BASE_URL = `${import.meta.env.BASE_URL}solar/`
-const PLANET_TEXTURES: Record<string, string | null> = {
-  jupiter: '2k_jupiter.jpg',
-  saturn: '2k_saturn.jpg',
-  uranus: '2k_uranus.jpg',
-  neptune: '2k_neptune.jpg',
-  earth: '2k_earth_daymap.jpg',
-  moon: '2k_moon.jpg',
-  venus: '2k_venus_atmosphere.jpg',
-  mars: '2k_mars.jpg',
-  mercury: '2k_mercury.jpg',
-}
 
 const DEG_TO_RAD = Math.PI / 180
 const RAD_TO_DEG = 180 / Math.PI
@@ -89,59 +87,10 @@ const GLOBE_PADDING = 28
 const GLOBE_DEFAULT_ROTATION: Vec3 = [-20, -10, 0]
 const GLOBE_DRAG_SENSITIVITY = 0.25
 const MAX_GLOBE_TILT = 80
-const EARTH_DIAMETER_KM = 12742
 const PLANET_PREVIEW_SIZE = 260
 const PLANET_PADDING = 16
 const PLANET_DEFAULT_ROTATION: Vec3 = [-28, -12, 0]
 const MAX_LATITUDE = 89.9
-
-const PLANETS = [
-  {
-    id: 'jupiter',
-    name: 'Jupiter',
-    diameterKm: 142984,
-  },
-  {
-    id: 'saturn',
-    name: 'Saturn',
-    diameterKm: 120536,
-  },
-  {
-    id: 'uranus',
-    name: 'Uranus',
-    diameterKm: 51118,
-  },
-  {
-    id: 'neptune',
-    name: 'Neptune',
-    diameterKm: 49528,
-  },
-  {
-    id: 'earth',
-    name: 'Earth',
-    diameterKm: 12742,
-  },
-  {
-    id: 'moon',
-    name: 'Moon',
-    diameterKm: 1738,
-  },
-  {
-    id: 'venus',
-    name: 'Venus',
-    diameterKm: 12104,
-  },
-  {
-    id: 'mars',
-    name: 'Mars',
-    diameterKm: 6779,
-  },
-  {
-    id: 'mercury',
-    name: 'Mercury',
-    diameterKm: 4879,
-  },
-] as const
 
 const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
   const lambda = lon * DEG_TO_RAD
@@ -312,23 +261,7 @@ const scaleGeometry = (
   }
 }
 
-type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
-  id?: number | string
-}
-
 type CountriesTopology = Topology<{ countries: GeometryCollection }>
-
-type CountryDatum = {
-  id: string
-  name: string
-  area: number | null
-  feature: CountryFeature
-  originalCentroid: [number, number]
-  globeCentroid: LonLat
-  centroidScreen: [number, number]
-  offset: { x: number; y: number }
-  color: string
-}
 
 type DragState = {
   id: string
@@ -506,6 +439,34 @@ function App() {
   )
 
   const latLines = useMemo(() => d3.range(-80, 81, 20), [])
+
+  const mapLatLines = useMemo(
+    () =>
+      latLines.map((lat) => {
+        const line: LineString = {
+          type: 'LineString',
+          coordinates: [
+            [-180, lat],
+            [180, lat],
+          ],
+        }
+        const path = pathGenerator(line)
+        const labelPoint = projection([-168, lat])
+        const label =
+          lat === 0
+            ? 'Equator'
+            : `${Math.abs(lat)}deg${lat > 0 ? 'N' : 'S'}`
+        return {
+          lat,
+          path,
+          label,
+          labelX: labelPoint ? labelPoint[0] : null,
+          labelY: labelPoint ? labelPoint[1] - 6 : null,
+          isEquator: lat === 0,
+        }
+      }),
+    [latLines, pathGenerator, projection]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -854,6 +815,48 @@ function App() {
     items.sort((a, b) => score(a.id) - score(b.id))
     return items
   }, [draggableCountries, draggingId, selectedId])
+
+  const getCurrentCoordinates = useCallback(
+    (country: CountryDatum): LonLat => {
+      const [cx, cy] = country.centroidScreen
+      const currentPoint: [number, number] = [
+        cx + country.offset.x,
+        cy + country.offset.y,
+      ]
+      const inverted = projection.invert?.(currentPoint)
+      if (!inverted) {
+        return country.originalCentroid
+      }
+      return [inverted[0], inverted[1]]
+    },
+    [projection]
+  )
+
+  const mapRenderedCountries = useMemo<MapRenderedCountry[]>(
+    () =>
+      orderedCountries.map((country) => {
+        const currentCoordinates = getCurrentCoordinates(country)
+        const rotation = createSphericalRotation(
+          country.originalCentroid,
+          currentCoordinates
+        )
+        const rotatedGeometry = country.feature.geometry
+          ? rotateGeometry(country.feature.geometry, rotation)
+          : country.feature.geometry
+        const rotatedFeature: CountryFeature = {
+          ...country.feature,
+          geometry: rotatedGeometry,
+        }
+        return {
+          country,
+          feature: rotatedFeature,
+          isDraggable: draggableIds.includes(country.id),
+          isSelected: selectedId === country.id,
+          isDragging: draggingId === country.id,
+        }
+      }),
+    [orderedCountries, draggableIds, selectedId, draggingId, getCurrentCoordinates]
+  )
 
   const selectedCountry =
     countries.find((country) => country.id === selectedId) ?? null
@@ -1327,19 +1330,6 @@ function App() {
     }
   }, [globeDragging, handleGlobeMove, handleGlobeEnd])
 
-  const getCurrentCoordinates = (country: CountryDatum): LonLat => {
-    const [cx, cy] = country.centroidScreen
-    const currentPoint: [number, number] = [
-      cx + country.offset.x,
-      cy + country.offset.y,
-    ]
-    const inverted = projection.invert?.(currentPoint)
-    if (!inverted) {
-      return country.originalCentroid
-    }
-    return [inverted[0], inverted[1]]
-  }
-
   const selectedDetails = selectedCountry
     ? (() => {
         const [, currentLat] = getCurrentCoordinates(selectedCountry)
@@ -1352,7 +1342,7 @@ function App() {
       })()
     : null
 
-  const globeHighlightCountries = useMemo(
+  const globeHighlightCountries = useMemo<GlobeHighlightCountry[]>(
     () =>
       draggableCountries.map((country) => {
         const rotation = createSphericalRotation(
@@ -1463,650 +1453,80 @@ function App() {
       </div>
 
       {isMapView ? (
-        <main className="layout">
-          <section className="map-shell">
-          <div className="map-header">
-            <h2>Move the comparison set</h2>
-            <p>
-              Drag any colored country anywhere on the map. The size updates
-              based on its new latitude, just like Mercator does.
-            </p>
-            <div className="map-header-actions">
-              <button
-                className="reset-button"
-                type="button"
-                onClick={resetPositions}
-              >
-                Reset positions
-              </button>
-              <a
-                className="github-button"
-                href="https://github.com/ObservedObserver/world-map-reality"
-                target="_blank"
-              >
-                View on GitHub
-              </a>
-              <a
-                className="github-button"
-                href="https://www.runcell.dev"
-                target="_blank"
-              >
-                Home
-              </a>
-            </div>
-          </div>
-
-          <div className="map-frame">
-            {loading && <div className="map-loading">Loading map...</div>}
-            {error && <div className="map-error">{error}</div>}
-            {!loading && !error && (
-              <svg
-                className="map-svg"
-                viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-                role="img"
-                aria-label="Mercator world map with draggable countries"
-              >
-                <defs>
-                  <filter
-                    id="countryShadow"
-                    x="-20%"
-                    y="-20%"
-                    width="140%"
-                    height="140%"
-                  >
-                    <feDropShadow
-                      dx="0"
-                      dy="10"
-                      stdDeviation="8"
-                      floodColor="rgba(6, 12, 22, 0.7)"
-                    />
-                  </filter>
-                </defs>
-
-                <rect
-                  className="map-ocean"
-                  width={MAP_WIDTH}
-                  height={MAP_HEIGHT}
-                />
-
-                <g className="world-base">
-                  {worldFeatures.map((feature, index) => (
-                    <path
-                      key={`world-${feature.id ?? index}`}
-                      d={pathGenerator(feature) ?? ''}
-                    />
-                  ))}
-                </g>
-
-                <g className="lat-lines">
-                  {latLines.map((lat) => {
-                    const line: LineString = {
-                      type: 'LineString',
-                      coordinates: [
-                        [-180, lat],
-                        [180, lat],
-                      ],
-                    }
-                    const path = pathGenerator(line)
-                    if (!path) {
-                      return null
-                    }
-                    return (
-                      <path
-                        key={`lat-${lat}`}
-                        d={path}
-                        className={`lat-line ${lat === 0 ? 'equator' : ''}`}
-                      />
-                    )
-                  })}
-                </g>
-
-                <g className="lat-labels">
-                  {latLines.map((lat) => {
-                    const labelPoint = projection([-168, lat])
-                    if (!labelPoint) {
-                      return null
-                    }
-                    const label =
-                      lat === 0
-                        ? 'Equator'
-                        : `${Math.abs(lat)}deg${lat > 0 ? 'N' : 'S'}`
-                    return (
-                      <text
-                        key={`label-${lat}`}
-                        x={labelPoint[0]}
-                        y={labelPoint[1] - 6}
-                      >
-                        {label}
-                      </text>
-                    )
-                  })}
-                </g>
-
-                <g className="countries">
-                  {orderedCountries.map((country) => {
-                    const currentCoordinates = getCurrentCoordinates(country)
-                    const rotation = createSphericalRotation(
-                      country.originalCentroid,
-                      currentCoordinates
-                    )
-                    const rotatedGeometry = country.feature.geometry
-                      ? rotateGeometry(country.feature.geometry, rotation)
-                      : country.feature.geometry
-                    const rotatedFeature: CountryFeature = {
-                      ...country.feature,
-                      geometry: rotatedGeometry,
-                    }
-                    const isDraggable = draggableIds.includes(country.id)
-                    return (
-                      <g
-                        key={country.id}
-                        className={`country-group ${
-                          selectedId === country.id ? 'is-selected' : ''
-                        } ${draggingId === country.id ? 'is-dragging' : ''} ${
-                          isDraggable ? '' : 'is-disabled'
-                        }`}
-                        onPointerDown={(event) =>
-                          handlePointerDown(event, country)
-                        }
-                        role="button"
-                        aria-label={`Drag ${country.name}`}
-                      >
-                        <path
-                          className="country-shape"
-                          d={pathGenerator(rotatedFeature) ?? ''}
-                          fill={country.color}
-                        />
-                      </g>
-                    )
-                  })}
-                </g>
-              </svg>
-            )}
-          </div>
-
-          <div className="map-footer">
-            <div className="legend">
-              {draggableCountries.length > 0 ? (
-                draggableCountries.map((country) => (
-                  <button
-                    key={`legend-${country.id}`}
-                    className={`legend-item ${
-                      selectedId === country.id ? 'is-active' : ''
-                    }`}
-                    type="button"
-                    onClick={() => setSelectedId(country.id)}
-                  >
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: country.color }}
-                      aria-hidden="true"
-                    />
-                    {country.name}
-                  </button>
-                ))
-              ) : (
-                <div className="legend-empty">No countries selected yet.</div>
-              )}
-            </div>
-            <p className="map-hint">
-              Tip: Move Greenland down near DR Congo to compare the contrast.
-            </p>
-          </div>
-        </section>
-
-        <aside className="info-panel">
-          <div className="panel-title">Selected country</div>
-          {selectedCountry && selectedDetails ? (
-            <div className="panel-content">
-              <div className="country-title">
-                <span
-                  className="color-dot"
-                  style={{ backgroundColor: selectedCountry.color }}
-                />
-                <h3>{selectedCountry.name}</h3>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Original latitude</span>
-                <span className="metric-value">
-                  {formatLatitude(selectedDetails.originalLat)}
-                </span>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Current latitude</span>
-                <span className="metric-value">
-                  {formatLatitude(selectedDetails.currentLat)}
-                </span>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Mercator scale factor</span>
-                <span className="metric-value">
-                  {formatScale(selectedDetails.currentScale)} of original size
-                </span>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Area</span>
-                <span className="metric-value">
-                  {selectedCountry.area
-                    ? `${areaFormatter.format(selectedCountry.area)} km²`
-                    : 'Unknown'}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="panel-empty">
-              Select a country to inspect its latitude and scale.
-            </div>
-          )}
-          <div className="panel-section">
-            <div className="panel-subtitle">Draggable set</div>
-            <div className="drag-search">
-              <input
-                type="search"
-                placeholder="Search countries..."
-                value={countryFilter}
-                onChange={(event) => setCountryFilter(event.target.value)}
-                aria-label="Search countries"
-              />
-            </div>
-            <div className="drag-list">
-              {filteredCountries.length > 0 ? (
-                filteredCountries.map((country) => {
-                const isDraggable = draggableIds.includes(country.id)
-                return (
-                  <label
-                    key={`drag-${country.id}`}
-                    className={`drag-item ${
-                      isDraggable ? 'is-on' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isDraggable}
-                      onChange={() => toggleDraggable(country.id)}
-                    />
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: country.color }}
-                      aria-hidden="true"
-                    />
-                    <span>{country.name}</span>
-                  </label>
-                )
-              })
-              ) : (
-                <div className="drag-empty">No matches.</div>
-              )}
-            </div>
-          </div>
-          <div className="panel-foot">
-            Dragging shifts latitude, which updates the Mercator inflation in
-            real time.
-          </div>
-        </aside>
-      </main>
-    ) : (
-      <main className="layout globe-layout">
-        <section className="globe-shell">
-          <div className="globe-header">
-            <h2>True-size globe view</h2>
-            <p>
-              {globeActiveMode === 'rotate'
-                ? 'Drag to rotate the Earth. Use the comparison set to center a country.'
-                : 'Drag a highlighted country to reposition it on the globe.'}
-            </p>
-            <div className="globe-controls">
-              <div className="globe-actions">
-                <button
-                  className="reset-button"
-                  type="button"
-                  onClick={resetGlobeRotation}
-                >
-                  Reset scene
-                </button>
-                <button
-                  className="github-button"
-                  type="button"
-                  onClick={() =>
-                    selectedCountry ? focusOnCountry(selectedCountry) : null
-                  }
-                  disabled={!selectedCountry}
-                >
-                  Center selected
-                </button>
-                <button
-                  className="github-button"
-                  type="button"
-                  onClick={toggleGlobeFullscreen}
-                >
-                  {isGlobeFullscreen ? 'Exit full screen' : 'Full screen'}
-                </button>
-              </div>
-              <div className="globe-controls-secondary">
-                <div
-                  className="globe-toggle"
-                  role="group"
-                  aria-label="Globe drag mode"
-                >
-                  <button
-                    className={`globe-toggle-button ${
-                      globeActiveMode === 'rotate' ? 'is-active' : ''
-                    }`}
-                    type="button"
-                    aria-pressed={globeActiveMode === 'rotate'}
-                    onClick={() => setGlobeDragMode('rotate')}
-                  >
-                    Drag Earth
-                  </button>
-                  <button
-                    className={`globe-toggle-button ${
-                      globeActiveMode === 'country' ? 'is-active' : ''
-                    }`}
-                    type="button"
-                    aria-pressed={globeActiveMode === 'country'}
-                    onClick={() => setGlobeDragMode('country')}
-                  >
-                    Drag Country
-                  </button>
-                </div>
-                <button
-                  className={`solar-toggle ${
-                    solarSystemEnabled ? 'is-on' : ''
-                  }`}
-                  type="button"
-                  aria-pressed={solarSystemEnabled}
-                  onClick={() =>
-                    setSolarSystemEnabled((prev) => !prev)
-                  }
-                >
-                  Solar system {solarSystemEnabled ? 'on' : 'off'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`globe-frame ${
-              isGlobeFullscreen ? 'is-fullscreen' : ''
-            }`}
-            ref={globeFrameRef}
-          >
-            {loading && <div className="map-loading">Loading globe...</div>}
-            {error && <div className="map-error">{error}</div>}
-            {!loading && !error && (
-              <div className="globe-canvas">
-                <svg
-                  className={`globe-svg ${globeDragging ? 'is-dragging' : ''} ${
-                    globeActiveMode === 'country' ? 'is-country-mode' : ''
-                  }`}
-                  viewBox={`0 0 ${GLOBE_SIZE} ${GLOBE_SIZE}`}
-                  role="img"
-                  aria-label="Orthographic globe with countries"
-                  onPointerDown={handleGlobePointerDown}
-                  ref={globeSvgRef}
-                >
-                  <defs>
-                    <radialGradient
-                      id="globeHighlight"
-                      cx="30%"
-                      cy="30%"
-                      r="70%"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor="rgba(119, 212, 255, 0.35)"
-                      />
-                      <stop
-                        offset="55%"
-                        stopColor="rgba(10, 24, 44, 0.9)"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="rgba(7, 15, 28, 0.98)"
-                      />
-                    </radialGradient>
-                  </defs>
-                  <path
-                    className="globe-sphere"
-                    d={globePathGenerator(globeSphere) ?? ''}
-                    fill="url(#globeHighlight)"
-                  />
-                  <g className="globe-graticule">
-                    <path d={globePathGenerator(globeGraticule) ?? ''} />
-                  </g>
-                  <g className="globe-world">
-                    {worldFeatures.map((feature, index) => (
-                      <path
-                        key={`globe-world-${feature.id ?? index}`}
-                        d={globePathGenerator(feature) ?? ''}
-                      />
-                    ))}
-                  </g>
-                  <g
-                    className={`globe-highlight ${
-                      globeActiveMode === 'country' ? 'is-draggable' : ''
-                    }`}
-                  >
-                    {globeHighlightCountries.map(({ country, feature }) => (
-                      <path
-                        key={`globe-country-${country.id}`}
-                        d={globePathGenerator(feature) ?? ''}
-                        fill={country.color}
-                        onPointerDown={(event) =>
-                          handleGlobeCountryPointerDown(event, country)
-                        }
-                      />
-                    ))}
-                  </g>
-                </svg>
-              </div>
-            )}
-            {!loading && !error && solarSystemEnabled && (
-              <div
-                className={`planet-inset ${
-                  globeActiveMode === 'country' ? 'is-active' : ''
-                } ${isGlobeFullscreen ? 'is-large' : ''}`}
-              >
-                <div className="planet-inset-header">
-                  <span className="planet-label">Planet preview</span>
-                  <span className="planet-title">{activePlanet.name}</span>
-                </div>
-                <div className="planet-visual">
-                  <canvas
-                    className="planet-canvas"
-                    width={PLANET_PREVIEW_SIZE}
-                    height={PLANET_PREVIEW_SIZE}
-                    ref={planetCanvasRef}
-                    aria-hidden="true"
-                  />
-                  <svg
-                    className={`planet-svg ${
-                      globeActiveMode === 'rotate' ? 'is-rotatable' : ''
-                    } ${planetDragging ? 'is-dragging' : ''}`}
-                    viewBox={`0 0 ${PLANET_PREVIEW_SIZE} ${PLANET_PREVIEW_SIZE}`}
-                    role="img"
-                    aria-label={`Planet preview of ${activePlanet.name}`}
-                    ref={planetSvgRef}
-                    onPointerDown={handlePlanetPointerDown}
-                  >
-                    <defs>
-                      <radialGradient
-                        id="planetHighlight"
-                        cx="32%"
-                        cy="30%"
-                        r="70%"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="rgba(124, 196, 255, 0.3)"
-                        />
-                        <stop
-                          offset="60%"
-                          stopColor="rgba(8, 20, 36, 0.9)"
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="rgba(6, 12, 22, 0.98)"
-                        />
-                      </radialGradient>
-                    </defs>
-                    <path
-                      className="planet-sphere"
-                      d={planetPathGenerator(planetSphere) ?? ''}
-                    />
-                    <g className="planet-graticule">
-                      <path d={planetPathGenerator(planetGraticule) ?? ''} />
-                    </g>
-                    <path
-                      className="planet-shade"
-                      d={planetPathGenerator(planetSphere) ?? ''}
-                      fill="url(#planetHighlight)"
-                    />
-                    {planetCountryFeature && planetCountry ? (
-                      <path
-                        className="planet-country"
-                        d={planetPathGenerator(planetCountryFeature) ?? ''}
-                        fill={planetCountry.color}
-                        onPointerDown={handlePlanetCountryPointerDown}
-                      />
-                    ) : (
-                      <text
-                        className="planet-placeholder"
-                        x="50%"
-                        y="50%"
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        Drop a country
-                      </text>
-                    )}
-                  </svg>
-                </div>
-                <div className="planet-inset-meta">
-                  {areaFormatter.format(activePlanet.diameterKm)} km ·{' '}
-                  {formatPlanetRatio(planetRatio)}
-                </div>
-              </div>
-            )}
-            {isGlobeFullscreen && (
-              <button
-                className="fullscreen-exit"
-                type="button"
-                onClick={toggleGlobeFullscreen}
-              >
-                Exit full screen
-              </button>
-            )}
-          </div>
-
-          <p className="globe-hint">
-            {globeActiveMode === 'rotate'
-              ? 'Drag to spin the globe. The comparison set stays at true scale. Hold Cmd/Ctrl to drag countries.'
-              : solarSystemEnabled
-                ? 'Drag a highlighted country to move it across the globe or drop it on the planet preview.'
-                : 'Drag a highlighted country to move it across the globe.'}
-          </p>
-        </section>
-
-        <aside className="info-panel globe-panel">
-          <div className="panel-title">Selected country</div>
-          {selectedCountry ? (
-            <div className="panel-content">
-              <div className="country-title">
-                <span
-                  className="color-dot"
-                  style={{ backgroundColor: selectedCountry.color }}
-                />
-                <h3>{selectedCountry.name}</h3>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Centroid longitude</span>
-                <span className="metric-value">
-                  {formatLongitude(selectedCountry.globeCentroid[0])}
-                </span>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Centroid latitude</span>
-                <span className="metric-value">
-                  {formatLatitude(selectedCountry.globeCentroid[1])}
-                </span>
-              </div>
-              <div className="panel-metric">
-                <span className="metric-label">Area</span>
-                <span className="metric-value">
-                  {selectedCountry.area
-                    ? `${areaFormatter.format(selectedCountry.area)} km²`
-                    : 'Unknown'}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="panel-empty">
-              Pick a country from the comparison set.
-            </div>
-          )}
-          {solarSystemEnabled && (
-            <div className="panel-section planet-section">
-              <div className="panel-subtitle">Planet scale</div>
-              <div className="planet-list">
-                {PLANETS.map((planet) => {
-                  const ratio = planet.diameterKm / EARTH_DIAMETER_KM
-                  return (
-                    <button
-                      key={planet.id}
-                      className={`planet-item ${
-                        activePlanetId === planet.id ? 'is-active' : ''
-                      }`}
-                      type="button"
-                      aria-pressed={activePlanetId === planet.id}
-                      onClick={() => setActivePlanetId(planet.id)}
-                    >
-                      <span className="planet-name">{planet.name}</span>
-                      <span className="planet-meta">
-                        {areaFormatter.format(planet.diameterKm)} km ·{' '}
-                        {formatPlanetRatio(ratio)}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="planet-hint">
-                Drag a highlighted country onto the planet preview.
-              </div>
-            </div>
-          )}
-          <div className="panel-section">
-            <div className="panel-subtitle">Comparison set</div>
-            <div className="legend">
-              {draggableCountries.length > 0 ? (
-                draggableCountries.map((country) => (
-                  <button
-                    key={`globe-legend-${country.id}`}
-                    className={`legend-item ${
-                      selectedId === country.id ? 'is-active' : ''
-                    }`}
-                    type="button"
-                    onClick={() => focusOnCountry(country)}
-                  >
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: country.color }}
-                      aria-hidden="true"
-                    />
-                    {country.name}
-                  </button>
-                ))
-              ) : (
-                <div className="legend-empty">No countries selected yet.</div>
-              )}
-            </div>
-          </div>
-          <div className="panel-foot">
-            Switch to the Mercator tab to change the comparison set.
-          </div>
-        </aside>
-      </main>
-    )}
+        <MapView
+          loading={loading}
+          error={error}
+          mapWidth={MAP_WIDTH}
+          mapHeight={MAP_HEIGHT}
+          worldFeatures={worldFeatures}
+          pathGenerator={pathGenerator}
+          latLines={mapLatLines}
+          renderedCountries={mapRenderedCountries}
+          draggableCountries={draggableCountries}
+          selectedCountry={selectedCountry}
+          selectedDetails={selectedDetails}
+          selectedId={selectedId}
+          countryFilter={countryFilter}
+          filteredCountries={filteredCountries}
+          draggableIds={draggableIds}
+          areaFormatter={areaFormatter}
+          formatLatitude={formatLatitude}
+          formatScale={formatScale}
+          onResetPositions={resetPositions}
+          onSelectCountry={setSelectedId}
+          onCountryPointerDown={handlePointerDown}
+          onCountryFilterChange={setCountryFilter}
+          onToggleDraggable={toggleDraggable}
+        />
+      ) : (
+        <GlobeView
+          loading={loading}
+          error={error}
+          worldFeatures={worldFeatures}
+          globePathGenerator={globePathGenerator}
+          globeSphere={globeSphere}
+          globeGraticule={globeGraticule}
+          planetPathGenerator={planetPathGenerator}
+          planetSphere={planetSphere}
+          planetGraticule={planetGraticule}
+          globeHighlightCountries={globeHighlightCountries}
+          globeActiveMode={globeActiveMode}
+          globeDragging={globeDragging}
+          planetDragging={planetDragging}
+          solarSystemEnabled={solarSystemEnabled}
+          isGlobeFullscreen={isGlobeFullscreen}
+          activePlanet={activePlanet}
+          activePlanetId={activePlanetId}
+          planetRatio={planetRatio}
+          planetCountry={planetCountry}
+          planetCountryFeature={planetCountryFeature}
+          areaFormatter={areaFormatter}
+          selectedCountry={selectedCountry}
+          draggableCountries={draggableCountries}
+          globeFrameRef={globeFrameRef}
+          globeSvgRef={globeSvgRef}
+          planetCanvasRef={planetCanvasRef}
+          planetSvgRef={planetSvgRef}
+          globeSize={GLOBE_SIZE}
+          planetPreviewSize={PLANET_PREVIEW_SIZE}
+          onResetScene={resetGlobeRotation}
+          onCenterSelected={() =>
+            selectedCountry ? focusOnCountry(selectedCountry) : null
+          }
+          onToggleFullscreen={toggleGlobeFullscreen}
+          onSetGlobeDragMode={setGlobeDragMode}
+          onToggleSolarSystem={() => setSolarSystemEnabled((prev) => !prev)}
+          onGlobePointerDown={handleGlobePointerDown}
+          onGlobeCountryPointerDown={handleGlobeCountryPointerDown}
+          onPlanetPointerDown={handlePlanetPointerDown}
+          onPlanetCountryPointerDown={handlePlanetCountryPointerDown}
+          onSelectPlanet={setActivePlanetId}
+          onFocusCountry={focusOnCountry}
+          formatLatitude={formatLatitude}
+          formatLongitude={formatLongitude}
+          formatPlanetRatio={formatPlanetRatio}
+        />
+      )}
 
       <footer className="app-footer">
         <p>

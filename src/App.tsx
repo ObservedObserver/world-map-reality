@@ -70,6 +70,12 @@ const ROTATION_EPSILON = 1e-6
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
+const GLOBE_SIZE = 680
+const GLOBE_PADDING = 28
+const GLOBE_DEFAULT_ROTATION: Vec3 = [-20, -10, 0]
+const GLOBE_DRAG_SENSITIVITY = 0.25
+const MAX_GLOBE_TILT = 80
+
 const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
   const lambda = lon * DEG_TO_RAD
   const phi = lat * DEG_TO_RAD
@@ -196,6 +202,7 @@ type CountryDatum = {
   area: number | null
   feature: CountryFeature
   originalCentroid: [number, number]
+  globeCentroid: LonLat
   centroidScreen: [number, number]
   offset: { x: number; y: number }
   color: string
@@ -209,12 +216,34 @@ type DragState = {
   centroid: [number, number]
 }
 
+type GlobeDragState = {
+  pointerId: number
+  start: { x: number; y: number }
+  rotation: Vec3
+}
+
+type GlobeCountryDragState = {
+  id: string
+  pointerId: number
+  startLonLat: LonLat
+  startCentroid: LonLat
+}
+
 const formatLatitude = (lat: number) => {
   const absolute = Math.abs(lat)
   if (absolute < 0.05) {
     return `${absolute.toFixed(1)}deg`
   }
   const direction = lat >= 0 ? 'N' : 'S'
+  return `${absolute.toFixed(1)}deg${direction}`
+}
+
+const formatLongitude = (lon: number) => {
+  const absolute = Math.abs(lon)
+  if (absolute < 0.05) {
+    return `${absolute.toFixed(1)}deg`
+  }
+  const direction = lon >= 0 ? 'E' : 'W'
   return `${absolute.toFixed(1)}deg${direction}`
 }
 
@@ -244,8 +273,20 @@ function App() {
   const [countryFilter, setCountryFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'map' | 'globe'>('map')
+  const [globeDragMode, setGlobeDragMode] = useState<'rotate' | 'country'>(
+    'rotate'
+  )
+  const [globeModifierPressed, setGlobeModifierPressed] = useState(false)
+  const [globeRotation, setGlobeRotation] = useState<Vec3>(
+    GLOBE_DEFAULT_ROTATION
+  )
+  const [globeDragging, setGlobeDragging] = useState(false)
 
   const dragState = useRef<DragState | null>(null)
+  const globeDragState = useRef<GlobeDragState | null>(null)
+  const globeCountryDragState = useRef<GlobeCountryDragState | null>(null)
+  const globeSvgRef = useRef<SVGSVGElement | null>(null)
   const areaFormatter = useMemo(
     () => new Intl.NumberFormat('en-US'),
     []
@@ -263,6 +304,29 @@ function App() {
   const pathGenerator = useMemo(
     () => d3.geoPath(projection),
     [projection]
+  )
+
+  const globeProjection = useMemo(
+    () =>
+      d3
+        .geoOrthographic()
+        .scale(GLOBE_SIZE / 2 - GLOBE_PADDING)
+        .translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2])
+        .clipAngle(90)
+        .precision(0.3)
+        .rotate(globeRotation),
+    [globeRotation]
+  )
+
+  const globePathGenerator = useMemo(
+    () => d3.geoPath(globeProjection),
+    [globeProjection]
+  )
+
+  const globeGraticule = useMemo(() => d3.geoGraticule10(), [])
+  const globeSphere = useMemo(
+    () => ({ type: 'Sphere' } as unknown as d3.GeoPermissibleObjects),
+    []
   )
 
   const latLines = useMemo(() => d3.range(-80, 81, 20), [])
@@ -342,6 +406,7 @@ function App() {
               area: meta?.area ?? null,
               feature,
               originalCentroid: [lng, lat] as [number, number],
+              globeCentroid: [lng, lat] as LonLat,
               centroidScreen: [projected[0], projected[1]] as [number, number],
               offset: { x: 0, y: 0 },
               color: getCountryColor(id),
@@ -383,6 +448,43 @@ function App() {
     }
   }, [projection])
 
+  useEffect(() => {
+    if (activeView !== 'globe') {
+      setGlobeModifierPressed(false)
+      return
+    }
+    const clearModifier = () => {
+      setGlobeModifierPressed(false)
+      if (globeCountryDragState.current) {
+        globeCountryDragState.current = null
+        setGlobeDragging(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Meta' || event.key === 'Control') {
+        setGlobeModifierPressed(true)
+      }
+    }
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Meta' || event.key === 'Control') {
+        clearModifier()
+      }
+    }
+    const handleBlur = () => {
+      clearModifier()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', handleBlur)
+    document.addEventListener('visibilitychange', handleBlur)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', handleBlur)
+      document.removeEventListener('visibilitychange', handleBlur)
+    }
+  }, [activeView])
+
   const draggableCountries = useMemo(
     () => countries.filter((country) => draggableIds.includes(country.id)),
     [countries, draggableIds]
@@ -416,6 +518,19 @@ function App() {
 
   const selectedCountry =
     countries.find((country) => country.id === selectedId) ?? null
+
+  const focusOnCountry = useCallback(
+    (country: CountryDatum) => {
+      setSelectedId(country.id)
+      const [lon, lat] = country.globeCentroid
+      setGlobeRotation([-lon, -lat, 0])
+    },
+    [setSelectedId, setGlobeRotation]
+  )
+
+  const resetGlobeRotation = useCallback(() => {
+    setGlobeRotation(GLOBE_DEFAULT_ROTATION)
+  }, [])
 
   const toggleDraggable = (id: string) => {
     setDraggableIds((prev) => {
@@ -518,6 +633,165 @@ function App() {
     }
   }, [draggingId, handleDragMove, handleDragEnd])
 
+  const getGlobeLonLatFromClient = useCallback(
+    (clientX: number, clientY: number): LonLat | null => {
+      const svg = globeSvgRef.current
+      if (!svg) {
+        return null
+      }
+      const rect = svg.getBoundingClientRect()
+      if (!rect.width || !rect.height) {
+        return null
+      }
+      const x = ((clientX - rect.left) / rect.width) * GLOBE_SIZE
+      const y = ((clientY - rect.top) / rect.height) * GLOBE_SIZE
+      const radius = GLOBE_SIZE / 2 - GLOBE_PADDING
+      const dx = x - GLOBE_SIZE / 2
+      const dy = y - GLOBE_SIZE / 2
+      if (dx * dx + dy * dy > radius * radius) {
+        return null
+      }
+      const inverted = globeProjection.invert?.([x, y])
+      if (!inverted) {
+        return null
+      }
+      return [inverted[0], inverted[1]]
+    },
+    [globeProjection]
+  )
+
+  const handleGlobeMove = useCallback(
+    (event: PointerEvent) => {
+      if (
+        globeDragState.current &&
+        globeDragState.current.pointerId === event.pointerId
+      ) {
+        const dx = event.clientX - globeDragState.current.start.x
+        const dy = event.clientY - globeDragState.current.start.y
+        const nextRotation: Vec3 = [
+          globeDragState.current.rotation[0] + dx * GLOBE_DRAG_SENSITIVITY,
+          clamp(
+            globeDragState.current.rotation[1] - dy * GLOBE_DRAG_SENSITIVITY,
+            -MAX_GLOBE_TILT,
+            MAX_GLOBE_TILT
+          ),
+          0,
+        ]
+        setGlobeRotation(nextRotation)
+        return
+      }
+
+      if (
+        globeCountryDragState.current &&
+        globeCountryDragState.current.pointerId === event.pointerId
+      ) {
+        const nextLonLat = getGlobeLonLatFromClient(
+          event.clientX,
+          event.clientY
+        )
+        if (!nextLonLat) {
+          return
+        }
+        const rotation = createSphericalRotation(
+          globeCountryDragState.current.startLonLat,
+          nextLonLat
+        )
+        const nextCentroid = rotation(
+          globeCountryDragState.current.startCentroid
+        )
+        setCountries((prev) =>
+          prev.map((country) =>
+            country.id === globeCountryDragState.current?.id
+              ? { ...country, globeCentroid: nextCentroid }
+              : country
+          )
+        )
+      }
+    },
+    [getGlobeLonLatFromClient, setCountries, setGlobeRotation]
+  )
+
+  const handleGlobeEnd = useCallback((event: PointerEvent) => {
+    if (
+      globeDragState.current &&
+      globeDragState.current.pointerId === event.pointerId
+    ) {
+      globeDragState.current = null
+    }
+    if (
+      globeCountryDragState.current &&
+      globeCountryDragState.current.pointerId === event.pointerId
+    ) {
+      globeCountryDragState.current = null
+    }
+    if (!globeDragState.current && !globeCountryDragState.current) {
+      setGlobeDragging(false)
+    }
+  }, [])
+
+  const handleGlobePointerDown = (
+    event: ReactPointerEvent<SVGSVGElement>
+  ) => {
+    if (globeActiveMode !== 'rotate') {
+      return
+    }
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    globeCountryDragState.current = null
+    globeDragState.current = {
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      rotation: globeRotation,
+    }
+    setGlobeDragging(true)
+  }
+
+  const handleGlobeCountryPointerDown = (
+    event: ReactPointerEvent<SVGPathElement>,
+    country: CountryDatum
+  ) => {
+    if (globeActiveMode !== 'country') {
+      return
+    }
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    const startLonLat = getGlobeLonLatFromClient(
+      event.clientX,
+      event.clientY
+    )
+    if (!startLonLat) {
+      return
+    }
+    globeDragState.current = null
+    globeCountryDragState.current = {
+      id: country.id,
+      pointerId: event.pointerId,
+      startLonLat,
+      startCentroid: country.globeCentroid,
+    }
+    setSelectedId(country.id)
+    setGlobeDragging(true)
+  }
+
+  useEffect(() => {
+    if (!globeDragging) {
+      return
+    }
+    window.addEventListener('pointermove', handleGlobeMove)
+    window.addEventListener('pointerup', handleGlobeEnd)
+    window.addEventListener('pointercancel', handleGlobeEnd)
+    return () => {
+      window.removeEventListener('pointermove', handleGlobeMove)
+      window.removeEventListener('pointerup', handleGlobeEnd)
+      window.removeEventListener('pointercancel', handleGlobeEnd)
+    }
+  }, [globeDragging, handleGlobeMove, handleGlobeEnd])
+
   const getCurrentCoordinates = (country: CountryDatum): LonLat => {
     const [cx, cy] = country.centroidScreen
     const currentPoint: [number, number] = [
@@ -543,28 +817,94 @@ function App() {
       })()
     : null
 
+  const globeHighlightCountries = useMemo(
+    () =>
+      draggableCountries.map((country) => {
+        const rotation = createSphericalRotation(
+          country.originalCentroid,
+          country.globeCentroid
+        )
+        const rotatedGeometry = country.feature.geometry
+          ? rotateGeometry(country.feature.geometry, rotation)
+          : country.feature.geometry
+        const rotatedFeature: CountryFeature = {
+          ...country.feature,
+          geometry: rotatedGeometry,
+        }
+        return {
+          country,
+          feature: rotatedFeature,
+        }
+      }),
+    [draggableCountries]
+  )
+
+  const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
+  const isMapView = activeView === 'map'
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-copy">
-          <p className="eyebrow">Mercator True Size Playground</p>
-          <h1>The True Size of Countries (Mercator Map)</h1>
+          <p className="eyebrow">
+            {isMapView ? 'Mercator True Size Playground' : 'True Size Globe'}
+          </p>
+          <h1>
+            {isMapView
+              ? 'The True Size of Countries (Mercator Map)'
+              : 'Countries on a True Globe'}
+          </h1>
           <p className="subhead">
-            Mercator inflates shapes near the poles. Drag a country to a new
-            latitude and it resizes as if it belonged there.
+            {isMapView
+              ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
+              : 'Spin the orthographic globe to compare countries at their real scale.'}
           </p>
         </div>
         <div className="math-card">
-          <div className="math-label">Mercator distortion</div>
-          <div className="math-formula">1 / cos(latitude)</div>
-          <div className="math-detail">
-            Drag scale = cos(original lat) / cos(current lat)
-          </div>
+          {isMapView ? (
+            <>
+              <div className="math-label">Mercator distortion</div>
+              <div className="math-formula">1 / cos(latitude)</div>
+              <div className="math-detail">
+                Drag scale = cos(original lat) / cos(current lat)
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="math-label">Globe controls</div>
+              <div className="math-formula">Drag to rotate</div>
+              <div className="math-detail">
+                Tap a country chip to center it on the sphere.
+              </div>
+            </>
+          )}
         </div>
       </header>
 
-      <main className="layout">
-        <section className="map-shell">
+      <div className="view-tabs" role="tablist" aria-label="Map views">
+        <button
+          className={`view-tab ${isMapView ? 'is-active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={isMapView}
+          onClick={() => setActiveView('map')}
+        >
+          Mercator map
+        </button>
+        <button
+          className={`view-tab ${isMapView ? '' : 'is-active'}`}
+          type="button"
+          role="tab"
+          aria-selected={!isMapView}
+          onClick={() => setActiveView('globe')}
+        >
+          3D globe
+        </button>
+      </div>
+
+      {isMapView ? (
+        <main className="layout">
+          <section className="map-shell">
           <div className="map-header">
             <h2>Move the comparison set</h2>
             <p>
@@ -845,6 +1185,212 @@ function App() {
           </div>
         </aside>
       </main>
+    ) : (
+      <main className="layout globe-layout">
+        <section className="globe-shell">
+          <div className="globe-header">
+            <h2>True-size globe view</h2>
+            <p>
+              {globeActiveMode === 'rotate'
+                ? 'Drag to rotate the Earth. Use the comparison set to center a country.'
+                : 'Drag a highlighted country to reposition it on the globe.'}
+            </p>
+            <div className="globe-controls">
+              <div className="globe-actions">
+                <button
+                  className="reset-button"
+                  type="button"
+                  onClick={resetGlobeRotation}
+                >
+                  Reset rotation
+                </button>
+                <button
+                  className="github-button"
+                  type="button"
+                  onClick={() =>
+                    selectedCountry ? focusOnCountry(selectedCountry) : null
+                  }
+                  disabled={!selectedCountry}
+                >
+                  Center selected
+                </button>
+              </div>
+              <div
+                className="globe-toggle"
+                role="group"
+                aria-label="Globe drag mode"
+              >
+                <button
+                  className={`globe-toggle-button ${
+                    globeActiveMode === 'rotate' ? 'is-active' : ''
+                  }`}
+                  type="button"
+                  aria-pressed={globeActiveMode === 'rotate'}
+                  onClick={() => setGlobeDragMode('rotate')}
+                >
+                  Drag Earth
+                </button>
+                <button
+                  className={`globe-toggle-button ${
+                    globeActiveMode === 'country' ? 'is-active' : ''
+                  }`}
+                  type="button"
+                  aria-pressed={globeActiveMode === 'country'}
+                  onClick={() => setGlobeDragMode('country')}
+                >
+                  Drag Country
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="globe-frame">
+            {loading && <div className="map-loading">Loading globe...</div>}
+            {error && <div className="map-error">{error}</div>}
+            {!loading && !error && (
+              <svg
+                className={`globe-svg ${globeDragging ? 'is-dragging' : ''} ${
+                  globeActiveMode === 'country' ? 'is-country-mode' : ''
+                }`}
+                viewBox={`0 0 ${GLOBE_SIZE} ${GLOBE_SIZE}`}
+                role="img"
+                aria-label="Orthographic globe with countries"
+                onPointerDown={handleGlobePointerDown}
+                ref={globeSvgRef}
+              >
+                <defs>
+                  <radialGradient
+                    id="globeHighlight"
+                    cx="30%"
+                    cy="30%"
+                    r="70%"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="rgba(119, 212, 255, 0.35)"
+                    />
+                    <stop
+                      offset="55%"
+                      stopColor="rgba(10, 24, 44, 0.9)"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="rgba(7, 15, 28, 0.98)"
+                    />
+                  </radialGradient>
+                </defs>
+                <path
+                  className="globe-sphere"
+                  d={globePathGenerator(globeSphere) ?? ''}
+                  fill="url(#globeHighlight)"
+                />
+                <g className="globe-graticule">
+                  <path d={globePathGenerator(globeGraticule) ?? ''} />
+                </g>
+                <g className="globe-world">
+                  {worldFeatures.map((feature, index) => (
+                    <path
+                      key={`globe-world-${feature.id ?? index}`}
+                      d={globePathGenerator(feature) ?? ''}
+                    />
+                  ))}
+                </g>
+                <g
+                  className={`globe-highlight ${
+                    globeActiveMode === 'country' ? 'is-draggable' : ''
+                  }`}
+                >
+                  {globeHighlightCountries.map(({ country, feature }) => (
+                    <path
+                      key={`globe-country-${country.id}`}
+                      d={globePathGenerator(feature) ?? ''}
+                      fill={country.color}
+                      onPointerDown={(event) =>
+                        handleGlobeCountryPointerDown(event, country)
+                      }
+                    />
+                  ))}
+                </g>
+              </svg>
+            )}
+          </div>
+
+          <p className="globe-hint">
+            {globeActiveMode === 'rotate'
+              ? 'Drag to spin the globe. The comparison set stays at true scale. Hold Cmd/Ctrl to drag countries.'
+              : 'Drag a highlighted country to move it across the globe.'}
+          </p>
+        </section>
+
+        <aside className="info-panel globe-panel">
+          <div className="panel-title">Selected country</div>
+          {selectedCountry ? (
+            <div className="panel-content">
+              <div className="country-title">
+                <span
+                  className="color-dot"
+                  style={{ backgroundColor: selectedCountry.color }}
+                />
+                <h3>{selectedCountry.name}</h3>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Centroid longitude</span>
+                <span className="metric-value">
+                  {formatLongitude(selectedCountry.globeCentroid[0])}
+                </span>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Centroid latitude</span>
+                <span className="metric-value">
+                  {formatLatitude(selectedCountry.globeCentroid[1])}
+                </span>
+              </div>
+              <div className="panel-metric">
+                <span className="metric-label">Area</span>
+                <span className="metric-value">
+                  {selectedCountry.area
+                    ? `${areaFormatter.format(selectedCountry.area)} km²`
+                    : 'Unknown'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="panel-empty">
+              Pick a country from the comparison set.
+            </div>
+          )}
+          <div className="panel-section">
+            <div className="panel-subtitle">Comparison set</div>
+            <div className="legend">
+              {draggableCountries.length > 0 ? (
+                draggableCountries.map((country) => (
+                  <button
+                    key={`globe-legend-${country.id}`}
+                    className={`legend-item ${
+                      selectedId === country.id ? 'is-active' : ''
+                    }`}
+                    type="button"
+                    onClick={() => focusOnCountry(country)}
+                  >
+                    <span
+                      className="legend-swatch"
+                      style={{ backgroundColor: country.color }}
+                      aria-hidden="true"
+                    />
+                    {country.name}
+                  </button>
+                ))
+              ) : (
+                <div className="legend-empty">No countries selected yet.</div>
+              )}
+            </div>
+          </div>
+          <div className="panel-foot">
+            Switch to the Mercator tab to change the comparison set.
+          </div>
+        </aside>
+      </main>
+    )}
 
       <footer className="app-footer">
         <p>

@@ -53,6 +53,46 @@
   animation: fadeUp 0.8s ease 0.1s both;
 }
 
+.author-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--mist-strong);
+}
+
+.author-name {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.author-links {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.author-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--mist);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 245, 239, 0.15);
+  background: rgba(9, 16, 28, 0.4);
+  transition: color 0.2s ease, border 0.2s ease, background 0.2s ease;
+}
+
+.author-link:hover {
+  color: var(--sun);
+  border-color: rgba(246, 196, 83, 0.6);
+  background: rgba(246, 196, 83, 0.15);
+}
+
 .math-label {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -94,10 +134,34 @@
   transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
 }
 
+.view-tab-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-tab-badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(246, 196, 83, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(246, 196, 83, 0.55);
+}
+
 .view-tab.is-active {
   background: var(--gold);
   color: #1a1f2c;
   border-color: rgba(248, 245, 239, 0.35);
+}
+
+.view-tab.is-active .view-tab-badge {
+  background: rgba(26, 31, 44, 0.18);
+  color: #1a1f2c;
+  border-color: rgba(26, 31, 44, 0.3);
 }
 
 .view-tab:focus-visible {

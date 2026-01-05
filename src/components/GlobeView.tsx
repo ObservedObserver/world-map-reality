@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { GeoPermissibleObjects } from 'd3-geo'
 import type {
   CountryDatum,
@@ -16,7 +17,6 @@ type GlobeViewProps = {
   globeSphere: GeoPermissibleObjects
   globeGraticule: GeoPermissibleObjects
   planetPathGenerator: (input: GeoPermissibleObjects) => string | null
-  planetSphere: GeoPermissibleObjects
   planetGraticule: GeoPermissibleObjects
   globeHighlightCountries: GlobeHighlightCountry[]
   globeActiveMode: 'rotate' | 'country'
@@ -27,6 +27,9 @@ type GlobeViewProps = {
   activePlanet: Planet
   activePlanetId: Planet['id']
   planetRatio: number
+  planetZoom: number
+  canPlanetZoomIn: boolean
+  canPlanetZoomOut: boolean
   planetCountry: CountryDatum | null
   planetCountryFeature: CountryFeature | null
   areaFormatter: Intl.NumberFormat
@@ -34,6 +37,7 @@ type GlobeViewProps = {
   draggableCountries: CountryDatum[]
   globeSize: number
   planetPreviewSize: number
+  planetRadius: number
   globeFrameRef: React.RefObject<HTMLDivElement>
   globeSvgRef: React.RefObject<SVGSVGElement>
   planetCanvasRef: React.RefObject<HTMLCanvasElement>
@@ -50,6 +54,8 @@ type GlobeViewProps = {
   ) => void
   onPlanetPointerDown: (event: ReactPointerEvent<SVGSVGElement>) => void
   onPlanetCountryPointerDown: (event: ReactPointerEvent<SVGPathElement>) => void
+  onPlanetZoomIn: () => void
+  onPlanetZoomOut: () => void
   onSelectPlanet: (id: Planet['id']) => void
   onFocusCountry: (country: CountryDatum) => void
   formatLatitude: (lat: number) => string
@@ -65,7 +71,6 @@ const GlobeView = ({
   globeSphere,
   globeGraticule,
   planetPathGenerator,
-  planetSphere,
   planetGraticule,
   globeHighlightCountries,
   globeActiveMode,
@@ -76,6 +81,9 @@ const GlobeView = ({
   activePlanet,
   activePlanetId,
   planetRatio,
+  planetZoom,
+  canPlanetZoomIn,
+  canPlanetZoomOut,
   planetCountry,
   planetCountryFeature,
   areaFormatter,
@@ -83,6 +91,7 @@ const GlobeView = ({
   draggableCountries,
   globeSize,
   planetPreviewSize,
+  planetRadius,
   globeFrameRef,
   globeSvgRef,
   planetCanvasRef,
@@ -96,6 +105,8 @@ const GlobeView = ({
   onGlobeCountryPointerDown,
   onPlanetPointerDown,
   onPlanetCountryPointerDown,
+  onPlanetZoomIn,
+  onPlanetZoomOut,
   onSelectPlanet,
   onFocusCountry,
   formatLatitude,
@@ -123,13 +134,6 @@ const GlobeView = ({
               disabled={!selectedCountry}
             >
               Center selected
-            </button>
-            <button
-              className="github-button"
-              type="button"
-              onClick={onToggleFullscreen}
-            >
-              {isGlobeFullscreen ? 'Exit full screen' : 'Full screen'}
             </button>
           </div>
           <div className="globe-controls-secondary">
@@ -234,8 +238,35 @@ const GlobeView = ({
             } ${isGlobeFullscreen ? 'is-large' : ''}`}
           >
             <div className="planet-inset-header">
-              <span className="planet-label">Planet preview</span>
-              <span className="planet-title">{activePlanet.name}</span>
+              <div className="planet-inset-title">
+                <span className="planet-label">Planet preview</span>
+                <span className="planet-title">{activePlanet.name}</span>
+              </div>
+              <div className="planet-zoom">
+                <button
+                  className="planet-zoom-button"
+                  type="button"
+                  onClick={onPlanetZoomOut}
+                  disabled={!canPlanetZoomOut}
+                  aria-label="Zoom out planet preview"
+                  title="Zoom out"
+                >
+                  <ZoomOut size={16} />
+                </button>
+                <span className="planet-zoom-value">
+                  {Math.round(planetZoom * 100)}%
+                </span>
+                <button
+                  className="planet-zoom-button"
+                  type="button"
+                  onClick={onPlanetZoomIn}
+                  disabled={!canPlanetZoomIn}
+                  aria-label="Zoom in planet preview"
+                  title="Zoom in"
+                >
+                  <ZoomIn size={16} />
+                </button>
+              </div>
             </div>
             <div className="planet-visual">
               <canvas
@@ -261,27 +292,41 @@ const GlobeView = ({
                     <stop offset="60%" stopColor="rgba(8, 20, 36, 0.9)" />
                     <stop offset="100%" stopColor="rgba(6, 12, 22, 0.98)" />
                   </radialGradient>
+                  <clipPath id="planetClip">
+                    <circle
+                      cx={planetPreviewSize / 2}
+                      cy={planetPreviewSize / 2}
+                      r={planetRadius}
+                    />
+                  </clipPath>
                 </defs>
-                <path
+                <circle
                   className="planet-sphere"
-                  d={planetPathGenerator(planetSphere) ?? ''}
+                  cx={planetPreviewSize / 2}
+                  cy={planetPreviewSize / 2}
+                  r={planetRadius}
                 />
-                <g className="planet-graticule">
-                  <path d={planetPathGenerator(planetGraticule) ?? ''} />
+                <g clipPath="url(#planetClip)">
+                  <g className="planet-graticule">
+                    <path d={planetPathGenerator(planetGraticule) ?? ''} />
+                  </g>
+                  {planetCountryFeature && planetCountry ? (
+                    <path
+                      className="planet-country"
+                      d={planetPathGenerator(planetCountryFeature) ?? ''}
+                      fill={planetCountry.color}
+                      onPointerDown={onPlanetCountryPointerDown}
+                    />
+                  ) : null}
                 </g>
-                <path
+                <circle
                   className="planet-shade"
-                  d={planetPathGenerator(planetSphere) ?? ''}
+                  cx={planetPreviewSize / 2}
+                  cy={planetPreviewSize / 2}
+                  r={planetRadius}
                   fill="url(#planetHighlight)"
                 />
-                {planetCountryFeature && planetCountry ? (
-                  <path
-                    className="planet-country"
-                    d={planetPathGenerator(planetCountryFeature) ?? ''}
-                    fill={planetCountry.color}
-                    onPointerDown={onPlanetCountryPointerDown}
-                  />
-                ) : (
+                {!planetCountryFeature || !planetCountry ? (
                   <text
                     className="planet-placeholder"
                     x="50%"
@@ -291,7 +336,7 @@ const GlobeView = ({
                   >
                     Drop a country
                   </text>
-                )}
+                ) : null}
               </svg>
             </div>
             <div className="planet-inset-meta">
@@ -300,15 +345,15 @@ const GlobeView = ({
             </div>
           </div>
         )}
-        {isGlobeFullscreen && (
-          <button
-            className="fullscreen-exit"
-            type="button"
-            onClick={onToggleFullscreen}
-          >
-            Exit full screen
-          </button>
-        )}
+        <button
+          className="fullscreen-toggle"
+          type="button"
+          onClick={onToggleFullscreen}
+          aria-label={isGlobeFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          title={isGlobeFullscreen ? 'Exit full screen' : 'Enter full screen'}
+        >
+          {isGlobeFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+        </button>
       </div>
 
       <p className="globe-hint">

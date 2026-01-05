@@ -1,5 +1,13 @@
 # True size of countries
 
+## Use case 1: counries on other planets
+
+
+https://github.com/user-attachments/assets/cff57407-5137-4bad-aa85-3569c172ac5d
+
+
+## Use case 2: Mercator projection
+
 An interactive map that you can compare true size of countries with drag and drop.
 
 

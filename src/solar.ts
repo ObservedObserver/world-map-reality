@@ -50,6 +50,18 @@ export const PLANETS = [
 
 export type Planet = (typeof PLANETS)[number]
 
+export const PLANET_COLORS: Record<Planet['id'], string> = {
+  jupiter: '#d7a77a',
+  saturn: '#d9c28a',
+  uranus: '#78c7d8',
+  neptune: '#4b6cb7',
+  earth: '#2f8edb',
+  moon: '#c2c5cc',
+  venus: '#d8b365',
+  mars: '#c76b3a',
+  mercury: '#b0a6a0',
+}
+
 export const PLANET_TEXTURES: Record<Planet['id'], string | null> = {
   jupiter: '2k_jupiter.jpg',
   saturn: '2k_saturn.jpg',

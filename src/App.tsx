@@ -384,6 +384,7 @@ function App() {
   const globeFrameRef = useRef<HTMLDivElement | null>(null)
   const globeSvgRef = useRef<SVGSVGElement | null>(null)
   const planetSvgRef = useRef<SVGSVGElement | null>(null)
+  const planetInsetRef = useRef<HTMLDivElement | null>(null)
   const areaFormatter = useMemo(
     () => new Intl.NumberFormat('en-US'),
     []
@@ -1089,6 +1090,37 @@ function App() {
     [planetProjection, planetRadius]
   )
 
+  const isClientInsidePlanetInset = useCallback(
+    (clientX: number, clientY: number) => {
+      const inset = planetInsetRef.current
+      if (!inset) {
+        return false
+      }
+      const rect = inset.getBoundingClientRect()
+      return (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      )
+    },
+    []
+  )
+
+  const getPlanetDropLonLat = useCallback(
+    (clientX: number, clientY: number) => {
+      const lonLat = getPlanetLonLatFromClient(clientX, clientY)
+      if (lonLat) {
+        return lonLat
+      }
+      if (isClientInsidePlanetInset(clientX, clientY)) {
+        return [0, 0] as LonLat
+      }
+      return null
+    },
+    [getPlanetLonLatFromClient, isClientInsidePlanetInset]
+  )
+
   const handleGlobeMove = useCallback(
     (event: PointerEvent) => {
       if (
@@ -1204,12 +1236,20 @@ function App() {
       globeCountryDragState.current &&
       globeCountryDragState.current.pointerId === event.pointerId
     ) {
-      const planetLonLat = getPlanetLonLatFromClient(
+      const droppedId = globeCountryDragState.current.id
+      const planetLonLat = getPlanetDropLonLat(
         event.clientX,
         event.clientY
       )
       if (solarSystemEnabled && planetLonLat) {
-        upsertPlanetPlacement(globeCountryDragState.current.id, planetLonLat)
+        upsertPlanetPlacement(droppedId, planetLonLat)
+        setCountries((prev) =>
+          prev.map((country) =>
+            country.id === droppedId
+              ? { ...country, globeCentroid: country.originalCentroid }
+              : country
+          )
+        )
       }
       globeCountryDragState.current = null
     }
@@ -1227,7 +1267,7 @@ function App() {
     ) {
       setGlobeDragging(false)
     }
-  }, [getPlanetLonLatFromClient, solarSystemEnabled, upsertPlanetPlacement])
+  }, [getPlanetDropLonLat, solarSystemEnabled, upsertPlanetPlacement])
 
   const handleGlobePointerDown = (
     event: ReactPointerEvent<SVGSVGElement>
@@ -1541,10 +1581,14 @@ function App() {
           areaFormatter={areaFormatter}
           selectedCountry={selectedCountry}
           draggableCountries={draggableCountries}
+          countryFilter={countryFilter}
+          filteredCountries={filteredCountries}
+          draggableIds={draggableIds}
           globeFrameRef={globeFrameRef}
           globeSvgRef={globeSvgRef}
           planetCanvasRef={planetCanvasRef}
           planetSvgRef={planetSvgRef}
+          planetInsetRef={planetInsetRef}
           globeSize={GLOBE_SIZE}
           planetPreviewSize={PLANET_PREVIEW_SIZE}
           planetRadius={planetRadius}
@@ -1563,6 +1607,8 @@ function App() {
           onPlanetZoomOut={handlePlanetZoomOut}
           onSelectPlanet={setActivePlanetId}
           onFocusCountry={focusOnCountry}
+          onCountryFilterChange={setCountryFilter}
+          onToggleDraggable={toggleDraggable}
           formatLatitude={formatLatitude}
           formatLongitude={formatLongitude}
           formatPlanetRatio={formatPlanetRatio}

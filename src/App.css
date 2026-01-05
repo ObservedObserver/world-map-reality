@@ -71,6 +71,40 @@
   color: var(--mist);
 }
 
+.view-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(12, 26, 48, 0.65);
+  border: 1px solid rgba(248, 245, 239, 0.18);
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.8s ease 0.15s both;
+}
+
+.view-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mist);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.view-tab.is-active {
+  background: var(--gold);
+  color: #1a1f2c;
+  border-color: rgba(248, 245, 239, 0.35);
+}
+
+.view-tab:focus-visible {
+  outline: 2px solid rgba(246, 196, 83, 0.6);
+  outline-offset: 2px;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -120,6 +154,13 @@
   transform: translateY(-1px);
 }
 
+.reset-button:disabled,
+.github-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .github-button {
   border: 1px solid rgba(248, 245, 239, 0.25);
   background: rgba(12, 26, 48, 0.7);
@@ -137,6 +178,144 @@
   border-color: rgba(248, 245, 239, 0.45);
   background: rgba(18, 40, 68, 0.85);
   transform: translateY(-1px);
+}
+
+.globe-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeUp 0.9s ease 0.2s both;
+}
+
+.globe-header h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.globe-header p {
+  margin: 0;
+  color: var(--mist);
+}
+
+.globe-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.globe-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.globe-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(12, 26, 48, 0.65);
+  border: 1px solid rgba(248, 245, 239, 0.18);
+}
+
+.globe-toggle-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mist);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.globe-toggle-button.is-active {
+  background: rgba(246, 196, 83, 0.85);
+  color: #1a1f2c;
+  border-color: rgba(248, 245, 239, 0.35);
+}
+
+.globe-toggle-button:focus-visible {
+  outline: 2px solid rgba(246, 196, 83, 0.6);
+  outline-offset: 2px;
+}
+
+.globe-frame {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(95, 164, 205, 0.18),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #0b1a2e 0%, #0c1626 100%);
+  border: 1px solid rgba(248, 245, 239, 0.12);
+  box-shadow: 0 30px 80px rgba(6, 10, 22, 0.6);
+}
+
+.globe-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.globe-svg.is-country-mode {
+  cursor: default;
+}
+
+.globe-svg.is-dragging {
+  cursor: grabbing;
+}
+
+.globe-sphere {
+  stroke: rgba(248, 245, 239, 0.25);
+  stroke-width: 1;
+}
+
+.globe-graticule path {
+  fill: none;
+  stroke: rgba(248, 245, 239, 0.2);
+  stroke-width: 0.6;
+  stroke-dasharray: 4 6;
+}
+
+.globe-world path {
+  fill: rgba(248, 245, 239, 0.12);
+  stroke: rgba(248, 245, 239, 0.22);
+  stroke-width: 0.6;
+}
+
+.globe-highlight {
+  pointer-events: none;
+}
+
+.globe-highlight.is-draggable {
+  pointer-events: auto;
+}
+
+.globe-highlight.is-draggable path {
+  cursor: grab;
+}
+
+.globe-highlight.is-draggable path:active {
+  cursor: grabbing;
+}
+
+.globe-highlight path {
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 0.7;
+}
+
+.globe-hint {
+  margin: 0;
+  color: var(--mist-strong);
+  font-size: 0.95rem;
 }
 
 .map-frame {

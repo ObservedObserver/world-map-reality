@@ -135,8 +135,8 @@ const GlobeView = ({
             ? 'Drag to rotate the Earth. Use the comparison set to center a country.'
             : 'Drag a highlighted country to reposition it on the globe.'}
         </p>
-        <div className="globe-controls">
-          <div className="globe-actions">
+        <div className="globe-controls globe-toolbar">
+          <div className="globe-actions globe-toolbar-group">
             <button className="reset-button" type="button" onClick={onResetScene}>
               Reset scene
             </button>
@@ -149,7 +149,7 @@ const GlobeView = ({
               Center selected
             </button>
           </div>
-          <div className="globe-controls-secondary">
+          <div className="globe-controls-secondary globe-toolbar-group">
             <div className="globe-toggle" role="group" aria-label="Globe drag mode">
               <button
                 className={`globe-toggle-button ${
@@ -169,7 +169,7 @@ const GlobeView = ({
                 aria-pressed={globeActiveMode === 'country'}
                 onClick={() => onSetGlobeDragMode('country')}
               >
-                Drag Country
+                Drag Country ⌘
               </button>
             </div>
             <button

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
+import { Globe, Twitter, Youtube } from 'lucide-react'
 import type {
   CountryDatum,
   CountryFeature,
@@ -84,7 +85,7 @@ function App() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [draggableIds, setDraggableIds] = useState<string[]>([])
   const [countryFilter, setCountryFilter] = useState('')
-  const [activeView, setActiveView] = useState<'map' | 'globe'>('map')
+  const [activeView, setActiveView] = useState<'map' | 'globe'>('globe')
   const [globeDragMode, setGlobeDragMode] = useState<'rotate' | 'country'>(
     'rotate'
   )
@@ -1006,7 +1007,7 @@ function App() {
           </p>
         </div>
         <div className="math-card">
-          {isMapView ? (
+          {isMapView && (
             <>
               <div className="math-label">Mercator distortion</div>
               <div className="math-formula">1 / cos(latitude)</div>
@@ -1014,15 +1015,30 @@ function App() {
                 Drag scale = cos(original lat) / cos(current lat)
               </div>
             </>
-          ) : (
-            <>
-              <div className="math-label">Globe controls</div>
-              <div className="math-formula">Drag to rotate</div>
-              <div className="math-detail">
-                Tap a country chip to center it on the sphere.
-              </div>
-            </>
           )}
+          <div className="author-label">Follow the author</div>
+          <div className="author-links">
+            <a
+              className="author-link"
+              href="https://x.com/ob12er"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow on Twitter"
+            >
+              <Twitter size={16} />
+              Twitter
+            </a>
+            <a
+              className="author-link"
+              href="https://www.youtube.com/@elwynnlab"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow on YouTube"
+            >
+              <Youtube size={16} />
+              YouTube
+            </a>
+          </div>
         </div>
       </header>
 
@@ -1043,7 +1059,11 @@ function App() {
           aria-selected={!isMapView}
           onClick={() => setActiveView('globe')}
         >
-          3D globe
+          <span className="view-tab-content">
+            <Globe size={16} aria-hidden="true" />
+            3D Globe
+            <span className="view-tab-badge">new</span>
+          </span>
         </button>
       </div>
 

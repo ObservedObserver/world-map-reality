@@ -62,6 +62,20 @@ const normalizeId = (value: string | number) => {
 
 type LonLat = [number, number]
 type Vec3 = [number, number, number]
+type Planet = (typeof PLANETS)[number]
+
+const SOLAR_BASE_URL = `${import.meta.env.BASE_URL}solar/`
+const PLANET_TEXTURES: Record<string, string | null> = {
+  jupiter: '2k_jupiter.jpg',
+  saturn: '2k_saturn.jpg',
+  uranus: '2k_uranus.jpg',
+  neptune: '2k_neptune.jpg',
+  earth: '2k_earth_daymap.jpg',
+  moon: '2k_moon.jpg',
+  venus: '2k_venus_atmosphere.jpg',
+  mars: '2k_mars.jpg',
+  mercury: '2k_mercury.jpg',
+}
 
 const DEG_TO_RAD = Math.PI / 180
 const RAD_TO_DEG = 180 / Math.PI
@@ -75,6 +89,59 @@ const GLOBE_PADDING = 28
 const GLOBE_DEFAULT_ROTATION: Vec3 = [-20, -10, 0]
 const GLOBE_DRAG_SENSITIVITY = 0.25
 const MAX_GLOBE_TILT = 80
+const EARTH_DIAMETER_KM = 12742
+const PLANET_PREVIEW_SIZE = 260
+const PLANET_PADDING = 16
+const PLANET_DEFAULT_ROTATION: Vec3 = [-28, -12, 0]
+const MAX_LATITUDE = 89.9
+
+const PLANETS = [
+  {
+    id: 'jupiter',
+    name: 'Jupiter',
+    diameterKm: 142984,
+  },
+  {
+    id: 'saturn',
+    name: 'Saturn',
+    diameterKm: 120536,
+  },
+  {
+    id: 'uranus',
+    name: 'Uranus',
+    diameterKm: 51118,
+  },
+  {
+    id: 'neptune',
+    name: 'Neptune',
+    diameterKm: 49528,
+  },
+  {
+    id: 'earth',
+    name: 'Earth',
+    diameterKm: 12742,
+  },
+  {
+    id: 'moon',
+    name: 'Moon',
+    diameterKm: 1738,
+  },
+  {
+    id: 'venus',
+    name: 'Venus',
+    diameterKm: 12104,
+  },
+  {
+    id: 'mars',
+    name: 'Mars',
+    diameterKm: 6779,
+  },
+  {
+    id: 'mercury',
+    name: 'Mercury',
+    diameterKm: 4879,
+  },
+] as const
 
 const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
   const lambda = lon * DEG_TO_RAD
@@ -190,6 +257,61 @@ const rotateGeometry = (geometry: Geometry, rotate: (coord: LonLat) => LonLat): 
   }
 }
 
+const scaleGeometry = (
+  geometry: Geometry,
+  center: LonLat,
+  factor: number
+): Geometry => {
+  const scalePosition = (coord: number[]) => {
+    const lon = center[0] + (coord[0] - center[0]) * factor
+    const lat = clamp(
+      center[1] + (coord[1] - center[1]) * factor,
+      -MAX_LATITUDE,
+      MAX_LATITUDE
+    )
+    const clampedLon = clamp(lon, -180, 180)
+    return coord.length > 2 ? [clampedLon, lat, ...coord.slice(2)] : [clampedLon, lat]
+  }
+
+  switch (geometry.type) {
+    case 'Point':
+      return {
+        ...geometry,
+        coordinates: scalePosition(geometry.coordinates as number[]),
+      }
+    case 'MultiPoint':
+    case 'LineString':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][]).map(scalePosition),
+      }
+    case 'MultiLineString':
+    case 'Polygon':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][][]).map((line) =>
+          line.map(scalePosition)
+        ),
+      }
+    case 'MultiPolygon':
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as number[][][][]).map((polygon) =>
+          polygon.map((ring) => ring.map(scalePosition))
+        ),
+      }
+    case 'GeometryCollection':
+      return {
+        ...geometry,
+        geometries: geometry.geometries.map((geom) =>
+          scaleGeometry(geom, center, factor)
+        ),
+      }
+    default:
+      return geometry
+  }
+}
+
 type CountryFeature = Feature<Geometry, GeoJsonProperties> & {
   id?: number | string
 }
@@ -229,6 +351,12 @@ type GlobeCountryDragState = {
   startCentroid: LonLat
 }
 
+type PlanetDragState = {
+  pointerId: number
+  start: { x: number; y: number }
+  rotation: Vec3
+}
+
 const formatLatitude = (lat: number) => {
   const absolute = Math.abs(lat)
   if (absolute < 0.05) {
@@ -246,6 +374,9 @@ const formatLongitude = (lon: number) => {
   const direction = lon >= 0 ? 'E' : 'W'
   return `${absolute.toFixed(1)}deg${direction}`
 }
+
+const formatPlanetRatio = (ratio: number) =>
+  `${ratio.toFixed(ratio >= 1 ? 1 : 2)}x Earth`
 
 const formatScale = (scale: number) => `${Math.round(scale * 100)}%`
 
@@ -278,15 +409,38 @@ function App() {
     'rotate'
   )
   const [globeModifierPressed, setGlobeModifierPressed] = useState(false)
+  const [solarSystemEnabled, setSolarSystemEnabled] = useState(true)
+  const [activePlanetId, setActivePlanetId] = useState<Planet['id']>('mars')
+  const [planetCountryId, setPlanetCountryId] = useState<string | null>(null)
+  const [planetCountryCentroid, setPlanetCountryCentroid] =
+    useState<LonLat | null>(null)
+  const [planetRotation, setPlanetRotation] = useState<Vec3>(
+    PLANET_DEFAULT_ROTATION
+  )
   const [globeRotation, setGlobeRotation] = useState<Vec3>(
     GLOBE_DEFAULT_ROTATION
   )
   const [globeDragging, setGlobeDragging] = useState(false)
+  const [isGlobeFullscreen, setIsGlobeFullscreen] = useState(false)
+  const [planetDragging, setPlanetDragging] = useState(false)
 
   const dragState = useRef<DragState | null>(null)
   const globeDragState = useRef<GlobeDragState | null>(null)
   const globeCountryDragState = useRef<GlobeCountryDragState | null>(null)
+  const planetCountryDragState = useRef<{
+    id: string
+    pointerId: number
+  } | null>(null)
+  const planetDragState = useRef<PlanetDragState | null>(null)
+  const planetCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const planetTextureDataRef = useRef<{
+    data: Uint8ClampedArray
+    width: number
+    height: number
+  } | null>(null)
+  const globeFrameRef = useRef<HTMLDivElement | null>(null)
   const globeSvgRef = useRef<SVGSVGElement | null>(null)
+  const planetSvgRef = useRef<SVGSVGElement | null>(null)
   const areaFormatter = useMemo(
     () => new Intl.NumberFormat('en-US'),
     []
@@ -323,8 +477,30 @@ function App() {
     [globeProjection]
   )
 
+  const planetProjection = useMemo(
+    () =>
+      d3
+        .geoOrthographic()
+        .scale(PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING)
+        .translate([PLANET_PREVIEW_SIZE / 2, PLANET_PREVIEW_SIZE / 2])
+        .clipAngle(90)
+        .precision(0.3)
+        .rotate(planetRotation),
+    [planetRotation]
+  )
+
+  const planetPathGenerator = useMemo(
+    () => d3.geoPath(planetProjection),
+    [planetProjection]
+  )
+
   const globeGraticule = useMemo(() => d3.geoGraticule10(), [])
   const globeSphere = useMemo(
+    () => ({ type: 'Sphere' } as unknown as d3.GeoPermissibleObjects),
+    []
+  )
+  const planetGraticule = useMemo(() => d3.geoGraticule10(), [])
+  const planetSphere = useMemo(
     () => ({ type: 'Sphere' } as unknown as d3.GeoPermissibleObjects),
     []
   )
@@ -455,8 +631,11 @@ function App() {
     }
     const clearModifier = () => {
       setGlobeModifierPressed(false)
-      if (globeCountryDragState.current) {
-        globeCountryDragState.current = null
+      globeCountryDragState.current = null
+      planetCountryDragState.current = null
+      planetDragState.current = null
+      setPlanetDragging(false)
+      if (!globeDragState.current) {
         setGlobeDragging(false)
       }
     }
@@ -484,6 +663,166 @@ function App() {
       document.removeEventListener('visibilitychange', handleBlur)
     }
   }, [activeView])
+
+  useEffect(() => {
+    if (activeView !== 'globe') {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.()
+      } else {
+        setIsGlobeFullscreen(false)
+      }
+    }
+  }, [activeView])
+
+  const activePlanet = useMemo(
+    () => PLANETS.find((planet) => planet.id === activePlanetId) ?? PLANETS[0],
+    [activePlanetId]
+  )
+  const planetScaleFactor = useMemo(
+    () => EARTH_DIAMETER_KM / activePlanet.diameterKm,
+    [activePlanet]
+  )
+  const planetRatio = useMemo(
+    () => activePlanet.diameterKm / EARTH_DIAMETER_KM,
+    [activePlanet]
+  )
+  const planetTexture = useMemo(
+    () => PLANET_TEXTURES[activePlanet.id] ?? null,
+    [activePlanet.id]
+  )
+  const planetTextureUrl = useMemo(
+    () => (planetTexture ? `${SOLAR_BASE_URL}${planetTexture}` : null),
+    [planetTexture]
+  )
+  const planetCountry =
+    planetCountryId
+      ? countries.find((country) => country.id === planetCountryId) ?? null
+      : null
+
+  const drawPlanetTexture = useCallback(() => {
+    const canvas = planetCanvasRef.current
+    if (!canvas) {
+      return
+    }
+    const context = canvas.getContext('2d')
+    if (!context) {
+      return
+    }
+    const size = PLANET_PREVIEW_SIZE
+    if (canvas.width !== size || canvas.height !== size) {
+      canvas.width = size
+      canvas.height = size
+    }
+    context.clearRect(0, 0, size, size)
+    const radius = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
+    const radiusSquared = radius * radius
+    const center = size / 2
+    const baseColor: [number, number, number] = [10, 18, 36]
+    const texture = planetTextureDataRef.current
+    const imageData = context.createImageData(size, size)
+    const output = imageData.data
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const dx = x - center
+        const dy = y - center
+        if (dx * dx + dy * dy > radiusSquared) {
+          continue
+        }
+        const destIndex = (y * size + x) * 4
+        output[destIndex] = baseColor[0]
+        output[destIndex + 1] = baseColor[1]
+        output[destIndex + 2] = baseColor[2]
+        output[destIndex + 3] = 255
+
+        if (!texture) {
+          continue
+        }
+        const lonLat = planetProjection.invert?.([x, y])
+        if (!lonLat) {
+          continue
+        }
+        const { data, width, height } = texture
+        const [lon, lat] = lonLat
+        const u = (lon + 180) / 360
+        const v = (90 - lat) / 180
+        const srcX = Math.min(width - 1, Math.max(0, Math.floor(u * width)))
+        const srcY = Math.min(height - 1, Math.max(0, Math.floor(v * height)))
+        const srcIndex = (srcY * width + srcX) * 4
+        output[destIndex] = data[srcIndex]
+        output[destIndex + 1] = data[srcIndex + 1]
+        output[destIndex + 2] = data[srcIndex + 2]
+      }
+    }
+    context.putImageData(imageData, 0, 0)
+  }, [planetProjection])
+
+  useEffect(() => {
+    if (!planetTextureUrl) {
+      planetTextureDataRef.current = null
+      drawPlanetTexture()
+      return
+    }
+    let cancelled = false
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = planetTextureUrl
+    image.onload = () => {
+      if (cancelled) {
+        return
+      }
+      const offscreen = document.createElement('canvas')
+      offscreen.width = image.naturalWidth
+      offscreen.height = image.naturalHeight
+      const ctx = offscreen.getContext('2d')
+      if (!ctx) {
+        planetTextureDataRef.current = null
+        drawPlanetTexture()
+        return
+      }
+      ctx.drawImage(image, 0, 0)
+      const textureData = ctx.getImageData(
+        0,
+        0,
+        offscreen.width,
+        offscreen.height
+      )
+      planetTextureDataRef.current = {
+        data: textureData.data,
+        width: offscreen.width,
+        height: offscreen.height,
+      }
+      drawPlanetTexture()
+    }
+    image.onerror = () => {
+      if (cancelled) {
+        return
+      }
+      planetTextureDataRef.current = null
+      drawPlanetTexture()
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [planetTextureUrl, drawPlanetTexture])
+
+  useEffect(() => {
+    if (!solarSystemEnabled || loading) {
+      return
+    }
+    drawPlanetTexture()
+  }, [solarSystemEnabled, loading, planetRotation, drawPlanetTexture])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsGlobeFullscreen(
+        document.fullscreenElement === globeFrameRef.current
+      )
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
 
   const draggableCountries = useMemo(
     () => countries.filter((country) => draggableIds.includes(country.id)),
@@ -530,7 +869,41 @@ function App() {
 
   const resetGlobeRotation = useCallback(() => {
     setGlobeRotation(GLOBE_DEFAULT_ROTATION)
+    setPlanetRotation(PLANET_DEFAULT_ROTATION)
+    setPlanetCountryId(null)
+    setPlanetCountryCentroid(null)
+    globeDragState.current = null
+    globeCountryDragState.current = null
+    planetCountryDragState.current = null
+    planetDragState.current = null
+    setGlobeDragging(false)
+    setPlanetDragging(false)
+    setCountries((prev) =>
+      prev.map((country) => ({
+        ...country,
+        globeCentroid: country.originalCentroid,
+      }))
+    )
   }, [])
+
+  const toggleGlobeFullscreen = useCallback(() => {
+    const frame = globeFrameRef.current
+    if (!frame) {
+      return
+    }
+    if (document.fullscreenElement === frame) {
+      document.exitFullscreen?.()
+      return
+    }
+    frame.requestFullscreen?.()
+  }, [])
+
+  useEffect(() => {
+    if (!planetCountryId || planetCountryCentroid || !planetCountry) {
+      return
+    }
+    setPlanetCountryCentroid(planetCountry.globeCentroid)
+  }, [planetCountryId, planetCountryCentroid, planetCountry])
 
   const toggleDraggable = (id: string) => {
     setDraggableIds((prev) => {
@@ -660,6 +1033,33 @@ function App() {
     [globeProjection]
   )
 
+  const getPlanetLonLatFromClient = useCallback(
+    (clientX: number, clientY: number): LonLat | null => {
+      const svg = planetSvgRef.current
+      if (!svg) {
+        return null
+      }
+      const rect = svg.getBoundingClientRect()
+      if (!rect.width || !rect.height) {
+        return null
+      }
+      const x = ((clientX - rect.left) / rect.width) * PLANET_PREVIEW_SIZE
+      const y = ((clientY - rect.top) / rect.height) * PLANET_PREVIEW_SIZE
+      const radius = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
+      const dx = x - PLANET_PREVIEW_SIZE / 2
+      const dy = y - PLANET_PREVIEW_SIZE / 2
+      if (dx * dx + dy * dy > radius * radius) {
+        return null
+      }
+      const inverted = planetProjection.invert?.([x, y])
+      if (!inverted) {
+        return null
+      }
+      return [inverted[0], inverted[1]]
+    },
+    [planetProjection]
+  )
+
   const handleGlobeMove = useCallback(
     (event: PointerEvent) => {
       if (
@@ -678,6 +1078,25 @@ function App() {
           0,
         ]
         setGlobeRotation(nextRotation)
+        return
+      }
+
+      if (
+        planetDragState.current &&
+        planetDragState.current.pointerId === event.pointerId
+      ) {
+        const dx = event.clientX - planetDragState.current.start.x
+        const dy = event.clientY - planetDragState.current.start.y
+        const nextRotation: Vec3 = [
+          planetDragState.current.rotation[0] + dx * GLOBE_DRAG_SENSITIVITY,
+          clamp(
+            planetDragState.current.rotation[1] - dy * GLOBE_DRAG_SENSITIVITY,
+            -MAX_GLOBE_TILT,
+            MAX_GLOBE_TILT
+          ),
+          0,
+        ]
+        setPlanetRotation(nextRotation)
         return
       }
 
@@ -706,9 +1125,31 @@ function App() {
               : country
           )
         )
+        return
+      }
+
+      if (
+        planetCountryDragState.current &&
+        planetCountryDragState.current.pointerId === event.pointerId
+      ) {
+        const nextLonLat = getPlanetLonLatFromClient(
+          event.clientX,
+          event.clientY
+        )
+        if (!nextLonLat) {
+          return
+        }
+        setPlanetCountryCentroid(nextLonLat)
       }
     },
-    [getGlobeLonLatFromClient, setCountries, setGlobeRotation]
+    [
+      getGlobeLonLatFromClient,
+      getPlanetLonLatFromClient,
+      setPlanetRotation,
+      setCountries,
+      setGlobeRotation,
+      setPlanetCountryCentroid,
+    ]
   )
 
   const handleGlobeEnd = useCallback((event: PointerEvent) => {
@@ -719,15 +1160,46 @@ function App() {
       globeDragState.current = null
     }
     if (
+      planetDragState.current &&
+      planetDragState.current.pointerId === event.pointerId
+    ) {
+      planetDragState.current = null
+      setPlanetDragging(false)
+    }
+    if (
       globeCountryDragState.current &&
       globeCountryDragState.current.pointerId === event.pointerId
     ) {
+      const planetLonLat = getPlanetLonLatFromClient(
+        event.clientX,
+        event.clientY
+      )
+      if (solarSystemEnabled && planetLonLat) {
+        setPlanetCountryId(globeCountryDragState.current.id)
+        setPlanetCountryCentroid(planetLonLat)
+      }
       globeCountryDragState.current = null
     }
-    if (!globeDragState.current && !globeCountryDragState.current) {
+    if (
+      planetCountryDragState.current &&
+      planetCountryDragState.current.pointerId === event.pointerId
+    ) {
+      planetCountryDragState.current = null
+    }
+    if (
+      !globeDragState.current &&
+      !globeCountryDragState.current &&
+      !planetCountryDragState.current &&
+      !planetDragState.current
+    ) {
       setGlobeDragging(false)
     }
-  }, [])
+  }, [
+    getPlanetLonLatFromClient,
+    setPlanetCountryCentroid,
+    setPlanetCountryId,
+    solarSystemEnabled,
+  ])
 
   const handleGlobePointerDown = (
     event: ReactPointerEvent<SVGSVGElement>
@@ -740,6 +1212,9 @@ function App() {
     }
     event.preventDefault()
     globeCountryDragState.current = null
+    planetCountryDragState.current = null
+    planetDragState.current = null
+    setPlanetDragging(false)
     globeDragState.current = {
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
@@ -768,6 +1243,9 @@ function App() {
       return
     }
     globeDragState.current = null
+    planetDragState.current = null
+    setPlanetDragging(false)
+    planetCountryDragState.current = null
     globeCountryDragState.current = {
       id: country.id,
       pointerId: event.pointerId,
@@ -775,6 +1253,63 @@ function App() {
       startCentroid: country.globeCentroid,
     }
     setSelectedId(country.id)
+    setGlobeDragging(true)
+  }
+
+  const handlePlanetCountryPointerDown = (
+    event: ReactPointerEvent<SVGPathElement>
+  ) => {
+    if (
+      globeActiveMode !== 'country' ||
+      !planetCountryId ||
+      !solarSystemEnabled
+    ) {
+      return
+    }
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    const nextLonLat = getPlanetLonLatFromClient(
+      event.clientX,
+      event.clientY
+    )
+    if (!nextLonLat) {
+      return
+    }
+    globeDragState.current = null
+    globeCountryDragState.current = null
+    planetDragState.current = null
+    setPlanetDragging(false)
+    planetCountryDragState.current = {
+      id: planetCountryId,
+      pointerId: event.pointerId,
+    }
+    setPlanetCountryCentroid(nextLonLat)
+    setSelectedId(planetCountryId)
+    setGlobeDragging(true)
+  }
+
+  const handlePlanetPointerDown = (
+    event: ReactPointerEvent<SVGSVGElement>
+  ) => {
+    if (globeActiveMode !== 'rotate' || !solarSystemEnabled) {
+      return
+    }
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    globeDragState.current = null
+    globeCountryDragState.current = null
+    planetCountryDragState.current = null
+    planetDragState.current = {
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      rotation: planetRotation,
+    }
+    setPlanetDragging(true)
     setGlobeDragging(true)
   }
 
@@ -838,6 +1373,31 @@ function App() {
       }),
     [draggableCountries]
   )
+
+  const planetCountryFeature = useMemo(() => {
+    if (!planetCountry || !planetCountryCentroid) {
+      return null
+    }
+    const scaleFactor = planetScaleFactor
+    const scaledGeometry = planetCountry.feature.geometry
+      ? scaleGeometry(
+          planetCountry.feature.geometry,
+          planetCountry.originalCentroid,
+          scaleFactor
+        )
+      : planetCountry.feature.geometry
+    const rotation = createSphericalRotation(
+      planetCountry.originalCentroid,
+      planetCountryCentroid
+    )
+    const rotatedGeometry = scaledGeometry
+      ? rotateGeometry(scaledGeometry, rotation)
+      : scaledGeometry
+    return {
+      ...planetCountry.feature,
+      geometry: rotatedGeometry,
+    } as CountryFeature
+  }, [planetCountry, planetCountryCentroid, planetScaleFactor])
 
   const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
   const isMapView = activeView === 'map'
@@ -1202,7 +1762,7 @@ function App() {
                   type="button"
                   onClick={resetGlobeRotation}
                 >
-                  Reset rotation
+                  Reset scene
                 </button>
                 <button
                   className="github-button"
@@ -1214,111 +1774,237 @@ function App() {
                 >
                   Center selected
                 </button>
-              </div>
-              <div
-                className="globe-toggle"
-                role="group"
-                aria-label="Globe drag mode"
-              >
                 <button
-                  className={`globe-toggle-button ${
-                    globeActiveMode === 'rotate' ? 'is-active' : ''
-                  }`}
+                  className="github-button"
                   type="button"
-                  aria-pressed={globeActiveMode === 'rotate'}
-                  onClick={() => setGlobeDragMode('rotate')}
+                  onClick={toggleGlobeFullscreen}
                 >
-                  Drag Earth
+                  {isGlobeFullscreen ? 'Exit full screen' : 'Full screen'}
                 </button>
+              </div>
+              <div className="globe-controls-secondary">
+                <div
+                  className="globe-toggle"
+                  role="group"
+                  aria-label="Globe drag mode"
+                >
+                  <button
+                    className={`globe-toggle-button ${
+                      globeActiveMode === 'rotate' ? 'is-active' : ''
+                    }`}
+                    type="button"
+                    aria-pressed={globeActiveMode === 'rotate'}
+                    onClick={() => setGlobeDragMode('rotate')}
+                  >
+                    Drag Earth
+                  </button>
+                  <button
+                    className={`globe-toggle-button ${
+                      globeActiveMode === 'country' ? 'is-active' : ''
+                    }`}
+                    type="button"
+                    aria-pressed={globeActiveMode === 'country'}
+                    onClick={() => setGlobeDragMode('country')}
+                  >
+                    Drag Country
+                  </button>
+                </div>
                 <button
-                  className={`globe-toggle-button ${
-                    globeActiveMode === 'country' ? 'is-active' : ''
+                  className={`solar-toggle ${
+                    solarSystemEnabled ? 'is-on' : ''
                   }`}
                   type="button"
-                  aria-pressed={globeActiveMode === 'country'}
-                  onClick={() => setGlobeDragMode('country')}
+                  aria-pressed={solarSystemEnabled}
+                  onClick={() =>
+                    setSolarSystemEnabled((prev) => !prev)
+                  }
                 >
-                  Drag Country
+                  Solar system {solarSystemEnabled ? 'on' : 'off'}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="globe-frame">
+          <div
+            className={`globe-frame ${
+              isGlobeFullscreen ? 'is-fullscreen' : ''
+            }`}
+            ref={globeFrameRef}
+          >
             {loading && <div className="map-loading">Loading globe...</div>}
             {error && <div className="map-error">{error}</div>}
             {!loading && !error && (
-              <svg
-                className={`globe-svg ${globeDragging ? 'is-dragging' : ''} ${
-                  globeActiveMode === 'country' ? 'is-country-mode' : ''
-                }`}
-                viewBox={`0 0 ${GLOBE_SIZE} ${GLOBE_SIZE}`}
-                role="img"
-                aria-label="Orthographic globe with countries"
-                onPointerDown={handleGlobePointerDown}
-                ref={globeSvgRef}
-              >
-                <defs>
-                  <radialGradient
-                    id="globeHighlight"
-                    cx="30%"
-                    cy="30%"
-                    r="70%"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="rgba(119, 212, 255, 0.35)"
-                    />
-                    <stop
-                      offset="55%"
-                      stopColor="rgba(10, 24, 44, 0.9)"
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="rgba(7, 15, 28, 0.98)"
-                    />
-                  </radialGradient>
-                </defs>
-                <path
-                  className="globe-sphere"
-                  d={globePathGenerator(globeSphere) ?? ''}
-                  fill="url(#globeHighlight)"
-                />
-                <g className="globe-graticule">
-                  <path d={globePathGenerator(globeGraticule) ?? ''} />
-                </g>
-                <g className="globe-world">
-                  {worldFeatures.map((feature, index) => (
-                    <path
-                      key={`globe-world-${feature.id ?? index}`}
-                      d={globePathGenerator(feature) ?? ''}
-                    />
-                  ))}
-                </g>
-                <g
-                  className={`globe-highlight ${
-                    globeActiveMode === 'country' ? 'is-draggable' : ''
+              <div className="globe-canvas">
+                <svg
+                  className={`globe-svg ${globeDragging ? 'is-dragging' : ''} ${
+                    globeActiveMode === 'country' ? 'is-country-mode' : ''
                   }`}
+                  viewBox={`0 0 ${GLOBE_SIZE} ${GLOBE_SIZE}`}
+                  role="img"
+                  aria-label="Orthographic globe with countries"
+                  onPointerDown={handleGlobePointerDown}
+                  ref={globeSvgRef}
                 >
-                  {globeHighlightCountries.map(({ country, feature }) => (
+                  <defs>
+                    <radialGradient
+                      id="globeHighlight"
+                      cx="30%"
+                      cy="30%"
+                      r="70%"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="rgba(119, 212, 255, 0.35)"
+                      />
+                      <stop
+                        offset="55%"
+                        stopColor="rgba(10, 24, 44, 0.9)"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="rgba(7, 15, 28, 0.98)"
+                      />
+                    </radialGradient>
+                  </defs>
+                  <path
+                    className="globe-sphere"
+                    d={globePathGenerator(globeSphere) ?? ''}
+                    fill="url(#globeHighlight)"
+                  />
+                  <g className="globe-graticule">
+                    <path d={globePathGenerator(globeGraticule) ?? ''} />
+                  </g>
+                  <g className="globe-world">
+                    {worldFeatures.map((feature, index) => (
+                      <path
+                        key={`globe-world-${feature.id ?? index}`}
+                        d={globePathGenerator(feature) ?? ''}
+                      />
+                    ))}
+                  </g>
+                  <g
+                    className={`globe-highlight ${
+                      globeActiveMode === 'country' ? 'is-draggable' : ''
+                    }`}
+                  >
+                    {globeHighlightCountries.map(({ country, feature }) => (
+                      <path
+                        key={`globe-country-${country.id}`}
+                        d={globePathGenerator(feature) ?? ''}
+                        fill={country.color}
+                        onPointerDown={(event) =>
+                          handleGlobeCountryPointerDown(event, country)
+                        }
+                      />
+                    ))}
+                  </g>
+                </svg>
+              </div>
+            )}
+            {!loading && !error && solarSystemEnabled && (
+              <div
+                className={`planet-inset ${
+                  globeActiveMode === 'country' ? 'is-active' : ''
+                } ${isGlobeFullscreen ? 'is-large' : ''}`}
+              >
+                <div className="planet-inset-header">
+                  <span className="planet-label">Planet preview</span>
+                  <span className="planet-title">{activePlanet.name}</span>
+                </div>
+                <div className="planet-visual">
+                  <canvas
+                    className="planet-canvas"
+                    width={PLANET_PREVIEW_SIZE}
+                    height={PLANET_PREVIEW_SIZE}
+                    ref={planetCanvasRef}
+                    aria-hidden="true"
+                  />
+                  <svg
+                    className={`planet-svg ${
+                      globeActiveMode === 'rotate' ? 'is-rotatable' : ''
+                    } ${planetDragging ? 'is-dragging' : ''}`}
+                    viewBox={`0 0 ${PLANET_PREVIEW_SIZE} ${PLANET_PREVIEW_SIZE}`}
+                    role="img"
+                    aria-label={`Planet preview of ${activePlanet.name}`}
+                    ref={planetSvgRef}
+                    onPointerDown={handlePlanetPointerDown}
+                  >
+                    <defs>
+                      <radialGradient
+                        id="planetHighlight"
+                        cx="32%"
+                        cy="30%"
+                        r="70%"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="rgba(124, 196, 255, 0.3)"
+                        />
+                        <stop
+                          offset="60%"
+                          stopColor="rgba(8, 20, 36, 0.9)"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="rgba(6, 12, 22, 0.98)"
+                        />
+                      </radialGradient>
+                    </defs>
                     <path
-                      key={`globe-country-${country.id}`}
-                      d={globePathGenerator(feature) ?? ''}
-                      fill={country.color}
-                      onPointerDown={(event) =>
-                        handleGlobeCountryPointerDown(event, country)
-                      }
+                      className="planet-sphere"
+                      d={planetPathGenerator(planetSphere) ?? ''}
                     />
-                  ))}
-                </g>
-              </svg>
+                    <g className="planet-graticule">
+                      <path d={planetPathGenerator(planetGraticule) ?? ''} />
+                    </g>
+                    <path
+                      className="planet-shade"
+                      d={planetPathGenerator(planetSphere) ?? ''}
+                      fill="url(#planetHighlight)"
+                    />
+                    {planetCountryFeature && planetCountry ? (
+                      <path
+                        className="planet-country"
+                        d={planetPathGenerator(planetCountryFeature) ?? ''}
+                        fill={planetCountry.color}
+                        onPointerDown={handlePlanetCountryPointerDown}
+                      />
+                    ) : (
+                      <text
+                        className="planet-placeholder"
+                        x="50%"
+                        y="50%"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        Drop a country
+                      </text>
+                    )}
+                  </svg>
+                </div>
+                <div className="planet-inset-meta">
+                  {areaFormatter.format(activePlanet.diameterKm)} km ·{' '}
+                  {formatPlanetRatio(planetRatio)}
+                </div>
+              </div>
+            )}
+            {isGlobeFullscreen && (
+              <button
+                className="fullscreen-exit"
+                type="button"
+                onClick={toggleGlobeFullscreen}
+              >
+                Exit full screen
+              </button>
             )}
           </div>
 
           <p className="globe-hint">
             {globeActiveMode === 'rotate'
               ? 'Drag to spin the globe. The comparison set stays at true scale. Hold Cmd/Ctrl to drag countries.'
-              : 'Drag a highlighted country to move it across the globe.'}
+              : solarSystemEnabled
+                ? 'Drag a highlighted country to move it across the globe or drop it on the planet preview.'
+                : 'Drag a highlighted country to move it across the globe.'}
           </p>
         </section>
 
@@ -1357,6 +2043,36 @@ function App() {
           ) : (
             <div className="panel-empty">
               Pick a country from the comparison set.
+            </div>
+          )}
+          {solarSystemEnabled && (
+            <div className="panel-section planet-section">
+              <div className="panel-subtitle">Planet scale</div>
+              <div className="planet-list">
+                {PLANETS.map((planet) => {
+                  const ratio = planet.diameterKm / EARTH_DIAMETER_KM
+                  return (
+                    <button
+                      key={planet.id}
+                      className={`planet-item ${
+                        activePlanetId === planet.id ? 'is-active' : ''
+                      }`}
+                      type="button"
+                      aria-pressed={activePlanetId === planet.id}
+                      onClick={() => setActivePlanetId(planet.id)}
+                    >
+                      <span className="planet-name">{planet.name}</span>
+                      <span className="planet-meta">
+                        {areaFormatter.format(planet.diameterKm)} km ·{' '}
+                        {formatPlanetRatio(ratio)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="planet-hint">
+                Drag a highlighted country onto the planet preview.
+              </div>
             </div>
           )}
           <div className="panel-section">

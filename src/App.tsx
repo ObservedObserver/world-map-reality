@@ -294,6 +294,11 @@ type PlanetDragState = {
   rotation: Vec3
 }
 
+type PlanetPlacement = {
+  id: string
+  centroid: LonLat
+}
+
 const formatLatitude = (lat: number) => {
   const absolute = Math.abs(lat)
   if (absolute < 0.05) {
@@ -348,9 +353,9 @@ function App() {
   const [globeModifierPressed, setGlobeModifierPressed] = useState(false)
   const [solarSystemEnabled, setSolarSystemEnabled] = useState(true)
   const [activePlanetId, setActivePlanetId] = useState<Planet['id']>('mars')
-  const [planetCountryId, setPlanetCountryId] = useState<string | null>(null)
-  const [planetCountryCentroid, setPlanetCountryCentroid] =
-    useState<LonLat | null>(null)
+  const [planetPlacements, setPlanetPlacements] = useState<PlanetPlacement[]>(
+    []
+  )
   const [planetRotation, setPlanetRotation] = useState<Vec3>(
     PLANET_DEFAULT_ROTATION
   )
@@ -656,10 +661,20 @@ function App() {
     [planetTexture]
   )
   const planetRadius = PLANET_BASE_RADIUS * planetZoom
-  const planetCountry =
-    planetCountryId
-      ? countries.find((country) => country.id === planetCountryId) ?? null
-      : null
+  const upsertPlanetPlacement = useCallback(
+    (id: string, centroid: LonLat) => {
+      setPlanetPlacements((prev) => {
+        const index = prev.findIndex((entry) => entry.id === id)
+        if (index === -1) {
+          return [...prev, { id, centroid }]
+        }
+        const next = [...prev]
+        next[index] = { ...next[index], centroid }
+        return next
+      })
+    },
+    []
+  )
   const canPlanetZoomIn = planetZoom < PLANET_ZOOM_MAX - 0.001
   const canPlanetZoomOut = planetZoom > PLANET_ZOOM_MIN + 0.001
 
@@ -877,8 +892,7 @@ function App() {
     setGlobeRotation(GLOBE_DEFAULT_ROTATION)
     setPlanetRotation(PLANET_DEFAULT_ROTATION)
     setPlanetZoom(1)
-    setPlanetCountryId(null)
-    setPlanetCountryCentroid(null)
+    setPlanetPlacements([])
     globeDragState.current = null
     globeCountryDragState.current = null
     planetCountryDragState.current = null
@@ -912,13 +926,6 @@ function App() {
     }
     frame.requestFullscreen?.()
   }, [])
-
-  useEffect(() => {
-    if (!planetCountryId || planetCountryCentroid || !planetCountry) {
-      return
-    }
-    setPlanetCountryCentroid(planetCountry.globeCentroid)
-  }, [planetCountryId, planetCountryCentroid, planetCountry])
 
   const toggleDraggable = (id: string) => {
     setDraggableIds((prev) => {
@@ -1154,7 +1161,13 @@ function App() {
         if (!nextLonLat) {
           return
         }
-        setPlanetCountryCentroid(nextLonLat)
+        setPlanetPlacements((prev) =>
+          prev.map((entry) =>
+            entry.id === planetCountryDragState.current?.id
+              ? { ...entry, centroid: nextLonLat }
+              : entry
+          )
+        )
       }
     },
     [
@@ -1163,7 +1176,6 @@ function App() {
       setPlanetRotation,
       setCountries,
       setGlobeRotation,
-      setPlanetCountryCentroid,
     ]
   )
 
@@ -1190,8 +1202,7 @@ function App() {
         event.clientY
       )
       if (solarSystemEnabled && planetLonLat) {
-        setPlanetCountryId(globeCountryDragState.current.id)
-        setPlanetCountryCentroid(planetLonLat)
+        upsertPlanetPlacement(globeCountryDragState.current.id, planetLonLat)
       }
       globeCountryDragState.current = null
     }
@@ -1209,12 +1220,7 @@ function App() {
     ) {
       setGlobeDragging(false)
     }
-  }, [
-    getPlanetLonLatFromClient,
-    setPlanetCountryCentroid,
-    setPlanetCountryId,
-    solarSystemEnabled,
-  ])
+  }, [getPlanetLonLatFromClient, solarSystemEnabled, upsertPlanetPlacement])
 
   const handleGlobePointerDown = (
     event: ReactPointerEvent<SVGSVGElement>
@@ -1272,13 +1278,10 @@ function App() {
   }
 
   const handlePlanetCountryPointerDown = (
-    event: ReactPointerEvent<SVGPathElement>
+    event: ReactPointerEvent<SVGPathElement>,
+    country: CountryDatum
   ) => {
-    if (
-      globeActiveMode !== 'country' ||
-      !planetCountryId ||
-      !solarSystemEnabled
-    ) {
+    if (globeActiveMode !== 'country' || !solarSystemEnabled) {
       return
     }
     if (event.button !== 0) {
@@ -1298,11 +1301,11 @@ function App() {
     planetDragState.current = null
     setPlanetDragging(false)
     planetCountryDragState.current = {
-      id: planetCountryId,
+      id: country.id,
       pointerId: event.pointerId,
     }
-    setPlanetCountryCentroid(nextLonLat)
-    setSelectedId(planetCountryId)
+    upsertPlanetPlacement(country.id, nextLonLat)
+    setSelectedId(country.id)
     setGlobeDragging(true)
   }
 
@@ -1376,30 +1379,45 @@ function App() {
     [draggableCountries]
   )
 
-  const planetCountryFeature = useMemo(() => {
-    if (!planetCountry || !planetCountryCentroid) {
-      return null
-    }
-    const scaleFactor = planetScaleFactor
-    const scaledGeometry = planetCountry.feature.geometry
-      ? scaleGeometry(
-          planetCountry.feature.geometry,
-          planetCountry.originalCentroid,
-          scaleFactor
-        )
-      : planetCountry.feature.geometry
-    const rotation = createSphericalRotation(
-      planetCountry.originalCentroid,
-      planetCountryCentroid
-    )
-    const rotatedGeometry = scaledGeometry
-      ? rotateGeometry(scaledGeometry, rotation)
-      : scaledGeometry
-    return {
-      ...planetCountry.feature,
-      geometry: rotatedGeometry,
-    } as CountryFeature
-  }, [planetCountry, planetCountryCentroid, planetScaleFactor])
+  const planetPreviewCountries = useMemo(
+    () =>
+      planetPlacements
+        .map((placement) => {
+          const country =
+            countries.find((entry) => entry.id === placement.id) ?? null
+          if (!country) {
+            return null
+          }
+          const scaleFactor = planetScaleFactor
+          const scaledGeometry = country.feature.geometry
+            ? scaleGeometry(
+                country.feature.geometry,
+                country.originalCentroid,
+                scaleFactor
+              )
+            : country.feature.geometry
+          const rotation = createSphericalRotation(
+            country.originalCentroid,
+            placement.centroid
+          )
+          const rotatedGeometry = scaledGeometry
+            ? rotateGeometry(scaledGeometry, rotation)
+            : scaledGeometry
+          const rotatedFeature: CountryFeature = {
+            ...country.feature,
+            geometry: rotatedGeometry,
+          }
+          return {
+            country,
+            feature: rotatedFeature,
+          }
+        })
+        .filter(
+          (entry): entry is { country: CountryDatum; feature: CountryFeature } =>
+            Boolean(entry)
+        ),
+    [planetPlacements, countries, planetScaleFactor]
+  )
 
   const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
   const isMapView = activeView === 'map'
@@ -1512,8 +1530,7 @@ function App() {
           planetZoom={planetZoom}
           canPlanetZoomIn={canPlanetZoomIn}
           canPlanetZoomOut={canPlanetZoomOut}
-          planetCountry={planetCountry}
-          planetCountryFeature={planetCountryFeature}
+          planetCountries={planetPreviewCountries}
           areaFormatter={areaFormatter}
           selectedCountry={selectedCountry}
           draggableCountries={draggableCountries}

@@ -111,6 +111,8 @@ function App() {
     pointerId: number
   } | null>(null)
   const planetDragState = useRef<PlanetDragState | null>(null)
+  const planetRotationFrame = useRef<number | null>(null)
+  const planetRotationPending = useRef<Vec3 | null>(null)
   const globeFrameRef = useRef<HTMLDivElement | null>(null)
   const globeSvgRef = useRef<SVGSVGElement | null>(null)
   const planetSvgRef = useRef<SVGSVGElement | null>(null)
@@ -229,6 +231,11 @@ function App() {
     globeCountryDragState.current = null
     planetCountryDragState.current = null
     planetDragState.current = null
+    if (planetRotationFrame.current !== null) {
+      cancelAnimationFrame(planetRotationFrame.current)
+      planetRotationFrame.current = null
+    }
+    planetRotationPending.current = null
     setPlanetDragging(false)
     if (!globeDragState.current) {
       setGlobeDragging(false)
@@ -291,6 +298,7 @@ function App() {
     solarSystemEnabled,
     loading,
     activeView,
+    isDragging: planetDragging,
   })
 
   const draggableCountries = useMemo(
@@ -387,6 +395,11 @@ function App() {
     globeCountryDragState.current = null
     planetCountryDragState.current = null
     planetDragState.current = null
+    if (planetRotationFrame.current !== null) {
+      cancelAnimationFrame(planetRotationFrame.current)
+      planetRotationFrame.current = null
+    }
+    planetRotationPending.current = null
     setGlobeDragging(false)
     setPlanetDragging(false)
     setCountries((prev) =>
@@ -591,6 +604,31 @@ function App() {
     [getPlanetLonLatFromClient, isClientInsidePlanetInset]
   )
 
+  const schedulePlanetRotation = useCallback((nextRotation: Vec3) => {
+    planetRotationPending.current = nextRotation
+    if (planetRotationFrame.current !== null) {
+      return
+    }
+    planetRotationFrame.current = requestAnimationFrame(() => {
+      planetRotationFrame.current = null
+      if (planetRotationPending.current) {
+        setPlanetRotation(planetRotationPending.current)
+        planetRotationPending.current = null
+      }
+    })
+  }, [])
+
+  const flushPlanetRotation = useCallback(() => {
+    if (planetRotationFrame.current !== null) {
+      cancelAnimationFrame(planetRotationFrame.current)
+      planetRotationFrame.current = null
+    }
+    if (planetRotationPending.current) {
+      setPlanetRotation(planetRotationPending.current)
+      planetRotationPending.current = null
+    }
+  }, [])
+
   const handleGlobeMove = useCallback(
     (event: PointerEvent) => {
       if (
@@ -627,7 +665,7 @@ function App() {
           ),
           0,
         ]
-        setPlanetRotation(nextRotation)
+        schedulePlanetRotation(nextRotation)
         return
       }
 
@@ -682,7 +720,7 @@ function App() {
     [
       getGlobeLonLatFromClient,
       getPlanetLonLatFromClient,
-      setPlanetRotation,
+      schedulePlanetRotation,
       setCountries,
       setGlobeRotation,
       setPlanetPlacements,
@@ -701,6 +739,7 @@ function App() {
       planetDragState.current.pointerId === event.pointerId
     ) {
       planetDragState.current = null
+      flushPlanetRotation()
       setPlanetDragging(false)
     }
     if (
@@ -739,6 +778,7 @@ function App() {
       setGlobeDragging(false)
     }
   }, [
+    flushPlanetRotation,
     getPlanetDropLonLat,
     solarSystemEnabled,
     upsertPlanetPlacement,

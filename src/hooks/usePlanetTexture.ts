@@ -15,6 +15,7 @@ type UsePlanetTextureOptions = {
   solarSystemEnabled: boolean
   loading: boolean
   activeView: 'map' | 'globe'
+  isDragging: boolean
 }
 
 export const usePlanetTexture = ({
@@ -25,11 +26,16 @@ export const usePlanetTexture = ({
   solarSystemEnabled,
   loading,
   activeView,
+  isDragging,
 }: UsePlanetTextureOptions) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const textureDataRef = useRef<TextureData | null>(null)
+  const imageDataRef = useRef<{ imageData: ImageData; size: number } | null>(
+    null
+  )
+  const lastDrawRef = useRef(0)
 
-  const drawTexture = useCallback(() => {
+  const drawTexture = useCallback((force = false) => {
     const canvas = canvasRef.current
     if (!canvas) {
       return
@@ -38,34 +44,70 @@ export const usePlanetTexture = ({
     if (!context) {
       return
     }
-    if (canvas.width !== previewSize || canvas.height !== previewSize) {
-      canvas.width = previewSize
-      canvas.height = previewSize
+    const rect = canvas.getBoundingClientRect()
+    const cssSize = Math.min(rect.width, rect.height)
+    if (!cssSize) {
+      return
     }
-    context.clearRect(0, 0, previewSize, previewSize)
-    const radiusSquared = radius * radius
-    const center = previewSize / 2
+    const now =
+      typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (isDragging && !force && now - lastDrawRef.current < 90) {
+      return
+    }
+    lastDrawRef.current = now
+    const devicePixelRatio = window.devicePixelRatio || 1
+    const qualityScale = isDragging ? 0.4 : 1
+    const pixelSize = Math.max(
+      1,
+      Math.round(cssSize * devicePixelRatio * qualityScale)
+    )
+    if (canvas.width !== pixelSize || canvas.height !== pixelSize) {
+      canvas.width = pixelSize
+      canvas.height = pixelSize
+    }
+    const scaleFactor = pixelSize / cssSize
+    const scale = previewSize / cssSize
+    const radiusCss = (radius / previewSize) * cssSize
+    const radiusSquared = radiusCss * radiusCss
+    const centerCss = cssSize / 2
     const baseColor: [number, number, number] = [10, 18, 36]
     const texture = textureDataRef.current
-    const imageData = context.createImageData(previewSize, previewSize)
-    const output = imageData.data
-    for (let y = 0; y < previewSize; y += 1) {
-      for (let x = 0; x < previewSize; x += 1) {
-        const dx = x - center
-        const dy = y - center
+    const invert = projection.invert
+    let imageDataEntry = imageDataRef.current
+    if (!imageDataEntry || imageDataEntry.size !== pixelSize) {
+      imageDataEntry = {
+        imageData: context.createImageData(pixelSize, pixelSize),
+        size: pixelSize,
+      }
+      imageDataRef.current = imageDataEntry
+    }
+    const output = imageDataEntry.imageData.data
+    const point: [number, number] = [0, 0]
+    for (let y = 0; y < pixelSize; y += 1) {
+      const cssY = y / scaleFactor
+      const dy = cssY - centerCss
+      for (let x = 0; x < pixelSize; x += 1) {
+        const cssX = x / scaleFactor
+        const dx = cssX - centerCss
+        const destIndex = (y * pixelSize + x) * 4
         if (dx * dx + dy * dy > radiusSquared) {
+          output[destIndex] = 0
+          output[destIndex + 1] = 0
+          output[destIndex + 2] = 0
+          output[destIndex + 3] = 0
           continue
         }
-        const destIndex = (y * previewSize + x) * 4
         output[destIndex] = baseColor[0]
         output[destIndex + 1] = baseColor[1]
         output[destIndex + 2] = baseColor[2]
         output[destIndex + 3] = 255
 
-        if (!texture) {
+        if (!texture || !invert) {
           continue
         }
-        const lonLat = projection.invert?.([x, y])
+        point[0] = cssX * scale
+        point[1] = cssY * scale
+        const lonLat = invert(point)
         if (!lonLat) {
           continue
         }
@@ -81,8 +123,8 @@ export const usePlanetTexture = ({
         output[destIndex + 2] = data[srcIndex + 2]
       }
     }
-    context.putImageData(imageData, 0, 0)
-  }, [previewSize, projection, radius])
+    context.putImageData(imageDataEntry.imageData, 0, 0)
+  }, [previewSize, projection, radius, isDragging])
 
   useEffect(() => {
     if (!textureUrl) {
@@ -104,7 +146,7 @@ export const usePlanetTexture = ({
       const ctx = offscreen.getContext('2d')
       if (!ctx) {
         textureDataRef.current = null
-        drawTexture()
+        drawTexture(true)
         return
       }
       ctx.drawImage(image, 0, 0)
@@ -119,14 +161,14 @@ export const usePlanetTexture = ({
         width: offscreen.width,
         height: offscreen.height,
       }
-      drawTexture()
+      drawTexture(true)
     }
     image.onerror = () => {
       if (cancelled) {
         return
       }
       textureDataRef.current = null
-      drawTexture()
+      drawTexture(true)
     }
     return () => {
       cancelled = true
@@ -146,6 +188,32 @@ export const usePlanetTexture = ({
     }
     drawTexture()
   }, [activeView, solarSystemEnabled, loading, drawTexture])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      if (!solarSystemEnabled || loading) {
+        return
+      }
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => drawTexture())
+    })
+    observer.observe(canvas)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [activeView, drawTexture, solarSystemEnabled, loading])
+
+  useEffect(() => {
+    if (!isDragging) {
+      drawTexture(true)
+    }
+  }, [isDragging, drawTexture])
 
   return { planetCanvasRef: canvasRef }
 }

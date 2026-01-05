@@ -37,3 +37,8 @@ export type GlobeHighlightCountry = {
   country: CountryDatum
   feature: CountryFeature
 }
+
+export type PlanetPlacement = {
+  id: string
+  centroid: LonLat
+}

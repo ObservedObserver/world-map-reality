@@ -1,271 +1,56 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { FeatureCollection, GeoJsonProperties, Geometry, LineString } from 'geojson'
-import type { GeometryCollection, Topology } from 'topojson-specification'
+import type { LineString } from 'geojson'
 import * as d3 from 'd3'
-import * as topojson from 'topojson-client'
 import type {
   CountryDatum,
   CountryFeature,
   GlobeHighlightCountry,
   LonLat,
   MapRenderedCountry,
-  SelectedDetails,
+  PlanetPlacement,
   Vec3,
 } from './types'
 import { EARTH_DIAMETER_KM, PLANETS, PLANET_TEXTURES } from './solar'
 import type { Planet } from './solar'
+import {
+  GLOBE_DEFAULT_ROTATION,
+  GLOBE_DRAG_SENSITIVITY,
+  GLOBE_PADDING,
+  GLOBE_SIZE,
+  MAP_HEIGHT,
+  MAP_PADDING,
+  MAP_WIDTH,
+  MAX_GLOBE_TILT,
+  PLANET_BASE_RADIUS,
+  PLANET_DEFAULT_ROTATION,
+  PLANET_PREVIEW_SIZE,
+  PLANET_ZOOM_MAX,
+  PLANET_ZOOM_MIN,
+  PLANET_ZOOM_STEP,
+  SOLAR_BASE_URL,
+} from './constants'
+import { useCountryData } from './hooks/useCountryData'
+import { useFullscreenState } from './hooks/useFullscreenState'
+import { useModifierKey } from './hooks/useModifierKey'
+import { usePlanetTexture } from './hooks/usePlanetTexture'
+import {
+  formatLatitude,
+  formatLongitude,
+  formatPlanetRatio,
+  formatScale,
+  getMercatorScale,
+} from './utils/formatters'
+import {
+  clamp,
+  createSphericalRotation,
+  rotateGeometry,
+  scaleGeometry,
+} from './utils/geo'
 import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
 import './App.css'
 
-const WORLD_TOPO_URL = `${import.meta.env.BASE_URL}data/countries-110m.json`
-const WORLD_NAMES_URL = `${import.meta.env.BASE_URL}data/countries-110m.tsv`
-
-const MAP_WIDTH = 1100
-const MAP_HEIGHT = 650
-const MAP_PADDING = 40
-
-const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36, 392]
-
-const COUNTRY_META: Record<number, { name: string; area: number }> = {
-  304: { name: 'Greenland', area: 2166086 },
-  643: { name: 'Russia', area: 17098246 },
-  124: { name: 'Canada', area: 9984670 },
-  840: { name: 'United States', area: 9833520 },
-  76: { name: 'Brazil', area: 8515767 },
-  356: { name: 'India', area: 3287263 },
-  180: { name: 'DR Congo', area: 2344858 },
-  36: { name: 'Australia', area: 7692024 },
-  392: { name: 'Japan', area: 377975 },
-}
-
-const COLOR_PALETTE = [
-  '#ef6f5a',
-  '#f6c453',
-  '#6ad0c4',
-  '#9bd0ff',
-  '#f49cbb',
-  '#b5e48c',
-  '#ffb870',
-  '#86b6ff',
-  '#f08a5d',
-  '#7ed7c1',
-  '#ffd166',
-  '#06d6a0',
-  '#118ab2',
-  '#ef476f',
-  '#ffd6a5',
-  '#7f5af0',
-  '#72efdd',
-  '#e07a5f',
-  '#f2cc8f',
-  '#84a59d',
-  '#f28482',
-  '#a3cef1',
-  '#ffcad4',
-  '#cdb4db',
-]
-
-const normalizeId = (value: string | number) => {
-  const raw = String(value)
-  const stripped = raw.replace(/^0+/, '')
-  return stripped === '' ? '0' : stripped
-}
-
-const SOLAR_BASE_URL = `${import.meta.env.BASE_URL}solar/`
-
-const DEG_TO_RAD = Math.PI / 180
-const RAD_TO_DEG = 180 / Math.PI
-const ROTATION_EPSILON = 1e-6
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max)
-
-const GLOBE_SIZE = 680
-const GLOBE_PADDING = 28
-const GLOBE_DEFAULT_ROTATION: Vec3 = [-20, -10, 0]
-const GLOBE_DRAG_SENSITIVITY = 0.25
-const MAX_GLOBE_TILT = 80
-const PLANET_PREVIEW_SIZE = 260
-const PLANET_PADDING = 16
-const PLANET_BASE_RADIUS = PLANET_PREVIEW_SIZE / 2 - PLANET_PADDING
-const PLANET_DEFAULT_ROTATION: Vec3 = [-28, -12, 0]
-const PLANET_ZOOM_MIN = 0.6
-const PLANET_ZOOM_MAX = 2.4
-const PLANET_ZOOM_STEP = 0.18
-const MAX_LATITUDE = 89.9
-
-const lonLatToVector = ([lon, lat]: LonLat): Vec3 => {
-  const lambda = lon * DEG_TO_RAD
-  const phi = lat * DEG_TO_RAD
-  const cosPhi = Math.cos(phi)
-  return [
-    cosPhi * Math.cos(lambda),
-    cosPhi * Math.sin(lambda),
-    Math.sin(phi),
-  ]
-}
-
-const vectorToLonLat = ([x, y, z]: Vec3): LonLat => {
-  const lon = Math.atan2(y, x) * RAD_TO_DEG
-  const hyp = Math.sqrt(x * x + y * y)
-  const lat = Math.atan2(z, hyp) * RAD_TO_DEG
-  return [lon, lat]
-}
-
-const cross = (a: Vec3, b: Vec3): Vec3 => [
-  a[1] * b[2] - a[2] * b[1],
-  a[2] * b[0] - a[0] * b[2],
-  a[0] * b[1] - a[1] * b[0],
-]
-
-const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-
-const normalize = (value: Vec3): Vec3 => {
-  const length = Math.hypot(value[0], value[1], value[2])
-  if (length < ROTATION_EPSILON) {
-    return [0, 0, 0]
-  }
-  return [value[0] / length, value[1] / length, value[2] / length]
-}
-
-// Rotate coordinates on the sphere so the feature centroid moves to the drag target.
-const createSphericalRotation = (from: LonLat, to: LonLat) => {
-  const fromVec = lonLatToVector(from)
-  const toVec = lonLatToVector(to)
-  const rawDot = clamp(dot(fromVec, toVec), -1, 1)
-  const angle = Math.acos(rawDot)
-  if (angle < ROTATION_EPSILON) {
-    return (coordinate: LonLat) => coordinate
-  }
-
-  let axis = cross(fromVec, toVec)
-  if (Math.hypot(axis[0], axis[1], axis[2]) < ROTATION_EPSILON) {
-    const fallback: Vec3 =
-      Math.abs(fromVec[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]
-    axis = cross(fromVec, fallback)
-  }
-  axis = normalize(axis)
-
-  const sinAngle = Math.sin(angle)
-  const cosAngle = Math.cos(angle)
-  const oneMinusCos = 1 - cosAngle
-
-  return ([lon, lat]: LonLat): LonLat => {
-    const vec = lonLatToVector([lon, lat])
-    const crossAxis = cross(axis, vec)
-    const dotAxis = dot(axis, vec)
-    const rotated: Vec3 = [
-      vec[0] * cosAngle + crossAxis[0] * sinAngle + axis[0] * dotAxis * oneMinusCos,
-      vec[1] * cosAngle + crossAxis[1] * sinAngle + axis[1] * dotAxis * oneMinusCos,
-      vec[2] * cosAngle + crossAxis[2] * sinAngle + axis[2] * dotAxis * oneMinusCos,
-    ]
-    return vectorToLonLat(rotated)
-  }
-}
-
-const rotateGeometry = (geometry: Geometry, rotate: (coord: LonLat) => LonLat): Geometry => {
-  const rotatePosition = (coord: number[]) => {
-    const [lon, lat] = rotate([coord[0], coord[1]])
-    return coord.length > 2 ? [lon, lat, ...coord.slice(2)] : [lon, lat]
-  }
-
-  switch (geometry.type) {
-    case 'Point':
-      return {
-        ...geometry,
-        coordinates: rotatePosition(geometry.coordinates as number[]),
-      }
-    case 'MultiPoint':
-    case 'LineString':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][]).map(rotatePosition),
-      }
-    case 'MultiLineString':
-    case 'Polygon':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][][]).map((line) =>
-          line.map(rotatePosition)
-        ),
-      }
-    case 'MultiPolygon':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][][][]).map((polygon) =>
-          polygon.map((ring) => ring.map(rotatePosition))
-        ),
-      }
-    case 'GeometryCollection':
-      return {
-        ...geometry,
-        geometries: geometry.geometries.map((geom) =>
-          rotateGeometry(geom, rotate)
-        ),
-      }
-    default:
-      return geometry
-  }
-}
-
-const scaleGeometry = (
-  geometry: Geometry,
-  center: LonLat,
-  factor: number
-): Geometry => {
-  const scalePosition = (coord: number[]) => {
-    const lon = center[0] + (coord[0] - center[0]) * factor
-    const lat = clamp(
-      center[1] + (coord[1] - center[1]) * factor,
-      -MAX_LATITUDE,
-      MAX_LATITUDE
-    )
-    const clampedLon = clamp(lon, -180, 180)
-    return coord.length > 2 ? [clampedLon, lat, ...coord.slice(2)] : [clampedLon, lat]
-  }
-
-  switch (geometry.type) {
-    case 'Point':
-      return {
-        ...geometry,
-        coordinates: scalePosition(geometry.coordinates as number[]),
-      }
-    case 'MultiPoint':
-    case 'LineString':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][]).map(scalePosition),
-      }
-    case 'MultiLineString':
-    case 'Polygon':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][][]).map((line) =>
-          line.map(scalePosition)
-        ),
-      }
-    case 'MultiPolygon':
-      return {
-        ...geometry,
-        coordinates: (geometry.coordinates as number[][][][]).map((polygon) =>
-          polygon.map((ring) => ring.map(scalePosition))
-        ),
-      }
-    case 'GeometryCollection':
-      return {
-        ...geometry,
-        geometries: geometry.geometries.map((geom) =>
-          scaleGeometry(geom, center, factor)
-        ),
-      }
-    default:
-      return geometry
-  }
-}
-
-type CountriesTopology = Topology<{ countries: GeometryCollection }>
 
 type DragState = {
   id: string
@@ -294,63 +79,15 @@ type PlanetDragState = {
   rotation: Vec3
 }
 
-type PlanetPlacement = {
-  id: string
-  centroid: LonLat
-}
-
-const formatLatitude = (lat: number) => {
-  const absolute = Math.abs(lat)
-  if (absolute < 0.05) {
-    return `${absolute.toFixed(1)}deg`
-  }
-  const direction = lat >= 0 ? 'N' : 'S'
-  return `${absolute.toFixed(1)}deg${direction}`
-}
-
-const formatLongitude = (lon: number) => {
-  const absolute = Math.abs(lon)
-  if (absolute < 0.05) {
-    return `${absolute.toFixed(1)}deg`
-  }
-  const direction = lon >= 0 ? 'E' : 'W'
-  return `${absolute.toFixed(1)}deg${direction}`
-}
-
-const formatPlanetRatio = (ratio: number) =>
-  `${ratio.toFixed(ratio >= 1 ? 1 : 2)}x Earth`
-
-const formatScale = (scale: number) => `${Math.round(scale * 100)}%`
-
-const getMercatorScale = (originalLat: number, currentLat: number) =>
-  Math.cos((originalLat * Math.PI) / 180) /
-  Math.cos((currentLat * Math.PI) / 180)
-
-const getCountryColor = (id: string) => {
-  const numericId = Number(id)
-  const index = Number.isFinite(numericId)
-    ? Math.abs(numericId) % COLOR_PALETTE.length
-    : id
-        .split('')
-        .reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-      COLOR_PALETTE.length
-  return COLOR_PALETTE[index]
-}
-
 function App() {
-  const [countries, setCountries] = useState<CountryDatum[]>([])
-  const [worldFeatures, setWorldFeatures] = useState<CountryFeature[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [draggableIds, setDraggableIds] = useState<string[]>([])
   const [countryFilter, setCountryFilter] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'map' | 'globe'>('map')
   const [globeDragMode, setGlobeDragMode] = useState<'rotate' | 'country'>(
     'rotate'
   )
-  const [globeModifierPressed, setGlobeModifierPressed] = useState(false)
   const [solarSystemEnabled, setSolarSystemEnabled] = useState(true)
   const [activePlanetId, setActivePlanetId] = useState<Planet['id']>('mars')
   const [planetPlacements, setPlanetPlacements] = useState<PlanetPlacement[]>(
@@ -364,7 +101,6 @@ function App() {
     GLOBE_DEFAULT_ROTATION
   )
   const [globeDragging, setGlobeDragging] = useState(false)
-  const [isGlobeFullscreen, setIsGlobeFullscreen] = useState(false)
   const [planetDragging, setPlanetDragging] = useState(false)
 
   const dragState = useRef<DragState | null>(null)
@@ -375,12 +111,6 @@ function App() {
     pointerId: number
   } | null>(null)
   const planetDragState = useRef<PlanetDragState | null>(null)
-  const planetCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const planetTextureDataRef = useRef<{
-    data: Uint8ClampedArray
-    width: number
-    height: number
-  } | null>(null)
   const globeFrameRef = useRef<HTMLDivElement | null>(null)
   const globeSvgRef = useRef<SVGSVGElement | null>(null)
   const planetSvgRef = useRef<SVGSVGElement | null>(null)
@@ -398,6 +128,15 @@ function App() {
         .translate([MAP_WIDTH / 2, MAP_HEIGHT / 2 + 10]),
     []
   )
+
+  const {
+    countries,
+    setCountries,
+    worldFeatures,
+    loading,
+    error,
+    initialSelection,
+  } = useCountryData(projection)
 
   const pathGenerator = useMemo(
     () => d3.geoPath(projection),
@@ -475,171 +214,36 @@ function App() {
   )
 
   useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
-
-    const loadCountryNames = async () => {
-      const nameLookup = new Map<string, string>()
-      try {
-        const response = await fetch(WORLD_NAMES_URL, {
-          signal: controller.signal,
-        })
-        if (!response.ok) {
-          return nameLookup
-        }
-        const namesText = await response.text()
-        const rows = d3.tsvParse(namesText)
-        rows.forEach((row) => {
-          const id = row.iso_n3 ?? row.un_a3 ?? row.iso_a3
-          const name = row.name ?? row.name_long
-          if (id && name) {
-            const rawId = String(id)
-            nameLookup.set(rawId, String(name))
-            nameLookup.set(normalizeId(rawId), String(name))
-          }
-        })
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          throw err
-        }
-      }
-      return nameLookup
-    }
-
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        const topoResponse = await fetch(WORLD_TOPO_URL, {
-          signal: controller.signal,
-        })
-        if (!topoResponse.ok) {
-          throw new Error('Unable to load map data.')
-        }
-
-        const nameLookup = await loadCountryNames()
-        const topoData = (await topoResponse.json()) as CountriesTopology
-        const countriesObject = topoData.objects?.countries
-        if (!countriesObject) {
-          throw new Error('Unexpected map data format.')
-        }
-
-        const collection = topojson.feature(
-          topoData,
-          countriesObject
-        ) as FeatureCollection<Geometry, GeoJsonProperties>
-
-        const allFeatures = collection.features as CountryFeature[]
-
-        const prepared: CountryDatum[] = allFeatures
-          .filter((feature) => feature.id !== undefined && feature.id !== null)
-          .map((feature) => {
-            const rawId = feature.id as string | number
-            const id = normalizeId(rawId)
-            const numericId = Number(rawId)
-            const meta = COUNTRY_META[numericId]
-            const [lng, lat] = d3.geoCentroid(feature)
-            const projected = projection([lng, lat]) ?? [0, 0]
-            return {
-              id,
-              name:
-                meta?.name ??
-                nameLookup.get(id) ??
-                feature.properties?.name ??
-                `Country ${id}`,
-              area: meta?.area ?? null,
-              feature,
-              originalCentroid: [lng, lat] as [number, number],
-              globeCentroid: [lng, lat] as LonLat,
-              centroidScreen: [projected[0], projected[1]] as [number, number],
-              offset: { x: 0, y: 0 },
-              color: getCountryColor(id),
-            }
-          })
-          .sort((a, b) => a.name.localeCompare(b.name))
-
-        const availableIds = new Set(prepared.map((country) => country.id))
-        const defaultDraggableIds = COUNTRY_ORDER.map(String).filter((id) =>
-          availableIds.has(id)
-        )
-        const fallbackIds = prepared.slice(0, 6).map((country) => country.id)
-        const initialDraggableIds =
-          defaultDraggableIds.length > 0 ? defaultDraggableIds : fallbackIds
-
-        if (!cancelled) {
-          setCountries(prepared)
-          setWorldFeatures(allFeatures)
-          setSelectedId(initialDraggableIds[0] ?? prepared[0]?.id ?? null)
-          setDraggableIds(initialDraggableIds)
-          setLoading(false)
-        }
-      } catch (err) {
-        if (cancelled) {
-          return
-        }
-        const message =
-          err instanceof Error ? err.message : 'Failed to load map.'
-        setError(message)
-        setLoading(false)
-      }
-    }
-
-    loadData()
-
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-  }, [projection])
-
-  useEffect(() => {
-    if (activeView !== 'globe') {
-      setGlobeModifierPressed(false)
+    if (loading) {
       return
     }
-    const clearModifier = () => {
-      setGlobeModifierPressed(false)
-      globeCountryDragState.current = null
-      planetCountryDragState.current = null
-      planetDragState.current = null
-      setPlanetDragging(false)
-      if (!globeDragState.current) {
-        setGlobeDragging(false)
-      }
+    if (!selectedId && initialSelection.selectedId) {
+      setSelectedId(initialSelection.selectedId)
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Meta' || event.key === 'Control') {
-        setGlobeModifierPressed(true)
-      }
+    if (draggableIds.length === 0 && initialSelection.draggableIds.length > 0) {
+      setDraggableIds(initialSelection.draggableIds)
     }
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === 'Meta' || event.key === 'Control') {
-        clearModifier()
-      }
-    }
-    const handleBlur = () => {
-      clearModifier()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('blur', handleBlur)
-    document.addEventListener('visibilitychange', handleBlur)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('blur', handleBlur)
-      document.removeEventListener('visibilitychange', handleBlur)
-    }
-  }, [activeView])
+  }, [loading, initialSelection, selectedId, draggableIds])
 
-  useEffect(() => {
-    if (activeView !== 'globe') {
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.()
-      } else {
-        setIsGlobeFullscreen(false)
-      }
+  const clearGlobeModifier = useCallback(() => {
+    globeCountryDragState.current = null
+    planetCountryDragState.current = null
+    planetDragState.current = null
+    setPlanetDragging(false)
+    if (!globeDragState.current) {
+      setGlobeDragging(false)
     }
-  }, [activeView])
+  }, [setPlanetDragging, setGlobeDragging])
+
+  const globeModifierPressed = useModifierKey(
+    activeView === 'globe',
+    clearGlobeModifier
+  )
+
+  const {
+    isFullscreen: isGlobeFullscreen,
+    toggleFullscreen: toggleGlobeFullscreen,
+  } = useFullscreenState(activeView, globeFrameRef)
 
   const activePlanet = useMemo(
     () => PLANETS.find((planet) => planet.id === activePlanetId) ?? PLANETS[0],
@@ -679,137 +283,15 @@ function App() {
   const canPlanetZoomIn = planetZoom < PLANET_ZOOM_MAX - 0.001
   const canPlanetZoomOut = planetZoom > PLANET_ZOOM_MIN + 0.001
 
-  const drawPlanetTexture = useCallback(() => {
-    const canvas = planetCanvasRef.current
-    if (!canvas) {
-      return
-    }
-    const context = canvas.getContext('2d')
-    if (!context) {
-      return
-    }
-    const size = PLANET_PREVIEW_SIZE
-    if (canvas.width !== size || canvas.height !== size) {
-      canvas.width = size
-      canvas.height = size
-    }
-    context.clearRect(0, 0, size, size)
-    const radius = planetRadius
-    const radiusSquared = radius * radius
-    const center = size / 2
-    const baseColor: [number, number, number] = [10, 18, 36]
-    const texture = planetTextureDataRef.current
-    const imageData = context.createImageData(size, size)
-    const output = imageData.data
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        const dx = x - center
-        const dy = y - center
-        if (dx * dx + dy * dy > radiusSquared) {
-          continue
-        }
-        const destIndex = (y * size + x) * 4
-        output[destIndex] = baseColor[0]
-        output[destIndex + 1] = baseColor[1]
-        output[destIndex + 2] = baseColor[2]
-        output[destIndex + 3] = 255
-
-        if (!texture) {
-          continue
-        }
-        const lonLat = planetProjection.invert?.([x, y])
-        if (!lonLat) {
-          continue
-        }
-        const { data, width, height } = texture
-        const [lon, lat] = lonLat
-        const u = (lon + 180) / 360
-        const v = (90 - lat) / 180
-        const srcX = Math.min(width - 1, Math.max(0, Math.floor(u * width)))
-        const srcY = Math.min(height - 1, Math.max(0, Math.floor(v * height)))
-        const srcIndex = (srcY * width + srcX) * 4
-        output[destIndex] = data[srcIndex]
-        output[destIndex + 1] = data[srcIndex + 1]
-        output[destIndex + 2] = data[srcIndex + 2]
-      }
-    }
-    context.putImageData(imageData, 0, 0)
-  }, [planetProjection, planetRadius])
-
-  useEffect(() => {
-    if (!planetTextureUrl) {
-      planetTextureDataRef.current = null
-      drawPlanetTexture()
-      return
-    }
-    let cancelled = false
-    const image = new Image()
-    image.decoding = 'async'
-    image.src = planetTextureUrl
-    image.onload = () => {
-      if (cancelled) {
-        return
-      }
-      const offscreen = document.createElement('canvas')
-      offscreen.width = image.naturalWidth
-      offscreen.height = image.naturalHeight
-      const ctx = offscreen.getContext('2d')
-      if (!ctx) {
-        planetTextureDataRef.current = null
-        drawPlanetTexture()
-        return
-      }
-      ctx.drawImage(image, 0, 0)
-      const textureData = ctx.getImageData(
-        0,
-        0,
-        offscreen.width,
-        offscreen.height
-      )
-      planetTextureDataRef.current = {
-        data: textureData.data,
-        width: offscreen.width,
-        height: offscreen.height,
-      }
-      drawPlanetTexture()
-    }
-    image.onerror = () => {
-      if (cancelled) {
-        return
-      }
-      planetTextureDataRef.current = null
-      drawPlanetTexture()
-    }
-    return () => {
-      cancelled = true
-    }
-  }, [planetTextureUrl, drawPlanetTexture])
-
-  useEffect(() => {
-    if (!solarSystemEnabled || loading) {
-      return
-    }
-    drawPlanetTexture()
-  }, [solarSystemEnabled, loading, planetRotation, drawPlanetTexture])
-
-  useEffect(() => {
-    if (activeView !== 'globe' || !solarSystemEnabled || loading) {
-      return
-    }
-    drawPlanetTexture()
-  }, [activeView, solarSystemEnabled, loading, drawPlanetTexture])
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsGlobeFullscreen(
-        document.fullscreenElement === globeFrameRef.current
-      )
-    }
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-  }, [])
+  const { planetCanvasRef } = usePlanetTexture({
+    textureUrl: planetTextureUrl,
+    projection: planetProjection,
+    radius: planetRadius,
+    previewSize: PLANET_PREVIEW_SIZE,
+    solarSystemEnabled,
+    loading,
+    activeView,
+  })
 
   const draggableCountries = useMemo(
     () => countries.filter((country) => draggableIds.includes(country.id)),
@@ -921,18 +403,6 @@ function App() {
 
   const handlePlanetZoomOut = useCallback(() => {
     setPlanetZoom((prev) => Math.max(PLANET_ZOOM_MIN, prev - PLANET_ZOOM_STEP))
-  }, [])
-
-  const toggleGlobeFullscreen = useCallback(() => {
-    const frame = globeFrameRef.current
-    if (!frame) {
-      return
-    }
-    if (document.fullscreenElement === frame) {
-      document.exitFullscreen?.()
-      return
-    }
-    frame.requestFullscreen?.()
   }, [])
 
   const toggleDraggable = (id: string) => {
@@ -1215,6 +685,7 @@ function App() {
       setPlanetRotation,
       setCountries,
       setGlobeRotation,
+      setPlanetPlacements,
     ]
   )
 
@@ -1267,7 +738,14 @@ function App() {
     ) {
       setGlobeDragging(false)
     }
-  }, [getPlanetDropLonLat, solarSystemEnabled, upsertPlanetPlacement])
+  }, [
+    getPlanetDropLonLat,
+    solarSystemEnabled,
+    upsertPlanetPlacement,
+    setCountries,
+    setPlanetDragging,
+    setGlobeDragging,
+  ])
 
   const handleGlobePointerDown = (
     event: ReactPointerEvent<SVGSVGElement>

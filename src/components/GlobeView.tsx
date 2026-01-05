@@ -30,8 +30,7 @@ type GlobeViewProps = {
   planetZoom: number
   canPlanetZoomIn: boolean
   canPlanetZoomOut: boolean
-  planetCountry: CountryDatum | null
-  planetCountryFeature: CountryFeature | null
+  planetCountries: Array<{ country: CountryDatum; feature: CountryFeature }>
   areaFormatter: Intl.NumberFormat
   selectedCountry: CountryDatum | null
   draggableCountries: CountryDatum[]
@@ -53,7 +52,10 @@ type GlobeViewProps = {
     country: CountryDatum
   ) => void
   onPlanetPointerDown: (event: ReactPointerEvent<SVGSVGElement>) => void
-  onPlanetCountryPointerDown: (event: ReactPointerEvent<SVGPathElement>) => void
+  onPlanetCountryPointerDown: (
+    event: ReactPointerEvent<SVGPathElement>,
+    country: CountryDatum
+  ) => void
   onPlanetZoomIn: () => void
   onPlanetZoomOut: () => void
   onSelectPlanet: (id: Planet['id']) => void
@@ -84,8 +86,7 @@ const GlobeView = ({
   planetZoom,
   canPlanetZoomIn,
   canPlanetZoomOut,
-  planetCountry,
-  planetCountryFeature,
+  planetCountries,
   areaFormatter,
   selectedCountry,
   draggableCountries,
@@ -310,14 +311,17 @@ const GlobeView = ({
                   <g className="planet-graticule">
                     <path d={planetPathGenerator(planetGraticule) ?? ''} />
                   </g>
-                  {planetCountryFeature && planetCountry ? (
-                    <path
-                      className="planet-country"
-                      d={planetPathGenerator(planetCountryFeature) ?? ''}
-                      fill={planetCountry.color}
-                      onPointerDown={onPlanetCountryPointerDown}
-                    />
-                  ) : null}
+                {planetCountries.map((item) => (
+                  <path
+                    key={`planet-country-${item.country.id}`}
+                    className="planet-country"
+                    d={planetPathGenerator(item.feature) ?? ''}
+                    fill={item.country.color}
+                    onPointerDown={(event) =>
+                      onPlanetCountryPointerDown(event, item.country)
+                    }
+                  />
+                ))}
                 </g>
                 <circle
                   className="planet-shade"
@@ -326,7 +330,7 @@ const GlobeView = ({
                   r={planetRadius}
                   fill="url(#planetHighlight)"
                 />
-                {!planetCountryFeature || !planetCountry ? (
+                {planetCountries.length === 0 ? (
                   <text
                     className="planet-placeholder"
                     x="50%"

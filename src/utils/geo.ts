@@ -131,15 +131,33 @@ export const scaleGeometry = (
   center: LonLat,
   factor: number
 ): Geometry => {
+  const centerVec = lonLatToVector(center)
+  const usesCenter = Math.abs(factor - 1) < ROTATION_EPSILON
+
   const scalePosition = (coord: number[]) => {
-    const lon = center[0] + (coord[0] - center[0]) * factor
-    const lat = clamp(
-      center[1] + (coord[1] - center[1]) * factor,
-      -MAX_LATITUDE,
-      MAX_LATITUDE
-    )
-    const clampedLon = clamp(lon, -180, 180)
-    return coord.length > 2 ? [clampedLon, lat, ...coord.slice(2)] : [clampedLon, lat]
+    if (usesCenter) {
+      return coord
+    }
+    const targetVec = lonLatToVector([coord[0], coord[1]])
+    const rawDot = clamp(dot(centerVec, targetVec), -1, 1)
+    const angle = Math.acos(rawDot)
+    if (angle < ROTATION_EPSILON) {
+      return coord.length > 2 ? [center[0], center[1], ...coord.slice(2)] : [...center]
+    }
+    const sinAngle = Math.sin(angle)
+    if (Math.abs(sinAngle) < ROTATION_EPSILON) {
+      return coord.length > 2 ? [coord[0], coord[1], ...coord.slice(2)] : [coord[0], coord[1]]
+    }
+    const scaleA = Math.sin((1 - factor) * angle) / sinAngle
+    const scaleB = Math.sin(factor * angle) / sinAngle
+    const scaledVec: Vec3 = normalize([
+      centerVec[0] * scaleA + targetVec[0] * scaleB,
+      centerVec[1] * scaleA + targetVec[1] * scaleB,
+      centerVec[2] * scaleA + targetVec[2] * scaleB,
+    ])
+    const [lon, lat] = vectorToLonLat(scaledVec)
+    const clampedLat = clamp(lat, -MAX_LATITUDE, MAX_LATITUDE)
+    return coord.length > 2 ? [lon, clampedLat, ...coord.slice(2)] : [lon, clampedLat]
   }
 
   switch (geometry.type) {

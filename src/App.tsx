@@ -792,6 +792,13 @@ function App() {
   }, [solarSystemEnabled, loading, planetRotation, drawPlanetTexture])
 
   useEffect(() => {
+    if (activeView !== 'globe' || !solarSystemEnabled || loading) {
+      return
+    }
+    drawPlanetTexture()
+  }, [activeView, solarSystemEnabled, loading, drawPlanetTexture])
+
+  useEffect(() => {
     const handleFullscreenChange = () => {
       setIsGlobeFullscreen(
         document.fullscreenElement === globeFrameRef.current

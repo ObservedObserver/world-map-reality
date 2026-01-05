@@ -29,7 +29,7 @@ export const PLANETS = [
   {
     id: 'moon',
     name: 'Moon',
-    diameterKm: 1738,
+    diameterKm: 3474,
   },
   {
     id: 'venus',

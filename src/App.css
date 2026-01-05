@@ -496,6 +496,21 @@
   color: var(--mist-strong);
 }
 
+.planet-title-row,
+.planet-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planet-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(6, 10, 22, 0.4);
+  flex: 0 0 auto;
+}
+
 .planet-title {
   font-family: var(--font-display);
   font-size: 1rem;

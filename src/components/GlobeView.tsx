@@ -6,7 +6,7 @@ import type {
   CountryFeature,
   GlobeHighlightCountry,
 } from '../types'
-import { EARTH_DIAMETER_KM, PLANETS } from '../solar'
+import { EARTH_DIAMETER_KM, PLANETS, PLANET_COLORS } from '../solar'
 import type { Planet } from '../solar'
 
 type GlobeViewProps = {
@@ -34,6 +34,9 @@ type GlobeViewProps = {
   areaFormatter: Intl.NumberFormat
   selectedCountry: CountryDatum | null
   draggableCountries: CountryDatum[]
+  countryFilter: string
+  filteredCountries: CountryDatum[]
+  draggableIds: string[]
   globeSize: number
   planetPreviewSize: number
   planetRadius: number
@@ -41,6 +44,7 @@ type GlobeViewProps = {
   globeSvgRef: React.RefObject<SVGSVGElement>
   planetCanvasRef: React.RefObject<HTMLCanvasElement>
   planetSvgRef: React.RefObject<SVGSVGElement>
+  planetInsetRef: React.RefObject<HTMLDivElement>
   onResetScene: () => void
   onCenterSelected: () => void
   onToggleFullscreen: () => void
@@ -60,6 +64,8 @@ type GlobeViewProps = {
   onPlanetZoomOut: () => void
   onSelectPlanet: (id: Planet['id']) => void
   onFocusCountry: (country: CountryDatum) => void
+  onCountryFilterChange: (value: string) => void
+  onToggleDraggable: (id: string) => void
   formatLatitude: (lat: number) => string
   formatLongitude: (lon: number) => string
   formatPlanetRatio: (ratio: number) => string
@@ -90,6 +96,9 @@ const GlobeView = ({
   areaFormatter,
   selectedCountry,
   draggableCountries,
+  countryFilter,
+  filteredCountries,
+  draggableIds,
   globeSize,
   planetPreviewSize,
   planetRadius,
@@ -97,6 +106,7 @@ const GlobeView = ({
   globeSvgRef,
   planetCanvasRef,
   planetSvgRef,
+  planetInsetRef,
   onResetScene,
   onCenterSelected,
   onToggleFullscreen,
@@ -110,6 +120,8 @@ const GlobeView = ({
   onPlanetZoomOut,
   onSelectPlanet,
   onFocusCountry,
+  onCountryFilterChange,
+  onToggleDraggable,
   formatLatitude,
   formatLongitude,
   formatPlanetRatio,
@@ -237,11 +249,19 @@ const GlobeView = ({
             className={`planet-inset ${
               globeActiveMode === 'country' ? 'is-active' : ''
             } ${isGlobeFullscreen ? 'is-large' : ''}`}
+            ref={planetInsetRef}
           >
             <div className="planet-inset-header">
               <div className="planet-inset-title">
                 <span className="planet-label">Planet preview</span>
-                <span className="planet-title">{activePlanet.name}</span>
+                <span className="planet-title-row">
+                  <span
+                    className="planet-dot"
+                    style={{ backgroundColor: PLANET_COLORS[activePlanet.id] }}
+                    aria-hidden="true"
+                  />
+                  <span className="planet-title">{activePlanet.name}</span>
+                </span>
               </div>
               <div className="planet-zoom">
                 <button
@@ -420,7 +440,14 @@ const GlobeView = ({
                   aria-pressed={activePlanetId === planet.id}
                   onClick={() => onSelectPlanet(planet.id)}
                 >
-                  <span className="planet-name">{planet.name}</span>
+                  <span className="planet-name-row">
+                    <span
+                      className="planet-dot"
+                      style={{ backgroundColor: PLANET_COLORS[planet.id] }}
+                      aria-hidden="true"
+                    />
+                    <span className="planet-name">{planet.name}</span>
+                  </span>
                   <span className="planet-meta">
                     {areaFormatter.format(planet.diameterKm)} km ·{' '}
                     {formatPlanetRatio(ratio)}
@@ -434,6 +461,45 @@ const GlobeView = ({
           </div>
         </div>
       )}
+      <div className="panel-section">
+        <div className="panel-subtitle">Custom set</div>
+        <div className="drag-search">
+          <input
+            type="search"
+            placeholder="Search countries..."
+            value={countryFilter}
+            onChange={(event) => onCountryFilterChange(event.target.value)}
+            aria-label="Search countries"
+          />
+        </div>
+        <div className="drag-list">
+          {filteredCountries.length > 0 ? (
+            filteredCountries.map((country) => {
+              const isDraggable = draggableIds.includes(country.id)
+              return (
+                <label
+                  key={`globe-drag-${country.id}`}
+                  className={`drag-item ${isDraggable ? 'is-on' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isDraggable}
+                    onChange={() => onToggleDraggable(country.id)}
+                  />
+                  <span
+                    className="legend-swatch"
+                    style={{ backgroundColor: country.color }}
+                    aria-hidden="true"
+                  />
+                  <span>{country.name}</span>
+                </label>
+              )
+            })
+          ) : (
+            <div className="drag-empty">No matches.</div>
+          )}
+        </div>
+      </div>
       <div className="panel-section">
         <div className="panel-subtitle">Comparison set</div>
         <div className="legend">

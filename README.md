@@ -3,7 +3,10 @@
 ## Use case 1: counries on other planets
 
 
-https://github.com/user-attachments/assets/cff57407-5137-4bad-aa85-3569c172ac5d
+
+https://github.com/user-attachments/assets/e72ea398-c065-44f8-85bb-5292bf440815
+
+
 
 
 ## Use case 2: Mercator projection

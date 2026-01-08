@@ -148,8 +148,12 @@ export const scaleGeometry = (
     if (Math.abs(sinAngle) < ROTATION_EPSILON) {
       return coord.length > 2 ? [coord[0], coord[1], ...coord.slice(2)] : [coord[0], coord[1]]
     }
-    const scaleA = Math.sin((1 - factor) * angle) / sinAngle
-    const scaleB = Math.sin(factor * angle) / sinAngle
+    // Clamp scaled angle to avoid wrapping past the antipode when factor > 1
+    const maxScaledAngle = Math.PI - ROTATION_EPSILON
+    const scaledAngle = Math.min(factor * angle, maxScaledAngle)
+    const effectiveFactor = scaledAngle / angle
+    const scaleA = Math.sin((1 - effectiveFactor) * angle) / sinAngle
+    const scaleB = Math.sin(effectiveFactor * angle) / sinAngle
     const scaledVec: Vec3 = normalize([
       centerVec[0] * scaleA + targetVec[0] * scaleB,
       centerVec[1] * scaleA + targetVec[1] * scaleB,

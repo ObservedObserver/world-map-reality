@@ -123,6 +123,46 @@
   animation: fadeUp 0.8s ease 0.15s both;
 }
 
+.page-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(8, 18, 34, 0.75);
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.8s ease both;
+}
+
+.page-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mist);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-tab.is-active {
+  background: var(--gold);
+  color: #1a1f2c;
+  border-color: rgba(248, 245, 239, 0.35);
+}
+
+.page-tab:focus-visible {
+  outline: 2px solid rgba(246, 196, 83, 0.6);
+  outline-offset: 2px;
+}
+
 .view-tab {
   border: 1px solid transparent;
   background: transparent;
@@ -174,6 +214,115 @@
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 24px;
   align-items: start;
+}
+
+.equator-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.equator-panel {
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 1px solid var(--mist-border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeUp 0.9s ease 0.2s both;
+}
+
+.equator-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.equator-panel-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.equator-panel-header p {
+  margin: 6px 0 0;
+  color: var(--mist);
+  font-size: 0.95rem;
+}
+
+.equator-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.equator-map-frame .map-svg {
+  min-height: 320px;
+}
+
+.equator-globe-frame {
+  min-height: 320px;
+}
+
+.equator-globe {
+  cursor: grab;
+}
+
+.equator-globe.is-dragging {
+  cursor: grabbing;
+}
+
+.equator-line {
+  fill: none;
+  stroke: var(--equator-accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px var(--equator-glow));
+  pointer-events: none;
+}
+
+.equator-handle {
+  fill: var(--equator-accent);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.6;
+  cursor: grab;
+  filter: drop-shadow(0 0 10px var(--equator-glow));
+}
+
+.equator-handle.is-dragging {
+  cursor: grabbing;
+}
+
+.equator-metrics {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 245, 239, 0.12);
+  background: rgba(12, 26, 48, 0.65);
+}
+
+.equator-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.equator-label {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.65rem;
+  color: var(--mist-strong);
+}
+
+.equator-value {
+  font-weight: 600;
 }
 
 .map-shell {
@@ -1102,6 +1251,10 @@
     grid-template-columns: 1fr;
   }
 
+  .equator-layout {
+    grid-template-columns: 1fr;
+  }
+
   .info-panel {
     position: static;
   }
@@ -1115,6 +1268,10 @@
 @media (max-width: 600px) {
   .app {
     padding: 32px 18px 56px;
+  }
+
+  .page-tabs {
+    flex-wrap: wrap;
   }
 
   .header-copy h1 {

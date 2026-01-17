@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
 import { Globe, Twitter, Youtube } from 'lucide-react'
+import { NavLink, useLocation } from 'react-router-dom'
 import type {
   CountryDatum,
   CountryFeature,
@@ -50,8 +51,10 @@ import {
 } from './utils/geo'
 import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
+import EquatorShiftView from './components/EquatorShiftView'
 import './App.css'
 
+const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 
 type DragState = {
   id: string
@@ -122,6 +125,7 @@ function App() {
     () => new Intl.NumberFormat('en-US'),
     []
   )
+
 
   const projection = useMemo(
     () =>
@@ -243,15 +247,20 @@ function App() {
     }
   }, [setPlanetDragging, setGlobeDragging])
 
+  const location = useLocation()
+  const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
+  const isTrueSizePage = !isEquatorLab
+
   const globeModifierPressed = useModifierKey(
-    activeView === 'globe',
+    isTrueSizePage && activeView === 'globe',
     clearGlobeModifier
   )
 
+  const fullscreenView = isTrueSizePage ? activeView : 'map'
   const {
     isFullscreen: isGlobeFullscreen,
     toggleFullscreen: toggleGlobeFullscreen,
-  } = useFullscreenState(activeView, globeFrameRef)
+  } = useFullscreenState(fullscreenView, globeFrameRef)
 
   const activePlanet = useMemo(
     () => PLANETS.find((planet) => planet.id === activePlanetId) ?? PLANETS[0],
@@ -987,32 +996,71 @@ function App() {
 
   const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
   const isMapView = activeView === 'map'
-
   return (
     <div className="app">
+      <div className="page-tabs" role="tablist" aria-label="Experience views">
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
+          to="/"
+          role="tab"
+          aria-selected={isTrueSizePage}
+        >
+          True size
+        </NavLink>
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
+          to={CUSTOM_MERCATOR_PATH}
+          role="tab"
+          aria-selected={!isTrueSizePage}
+        >
+          Equator lab
+        </NavLink>
+      </div>
+
       <header className="app-header">
         <div className="header-copy">
           <p className="eyebrow">
-            {isMapView ? 'Mercator True Size Playground' : 'True Size Globe'}
+            {isTrueSizePage
+              ? isMapView
+                ? 'Mercator True Size Playground'
+                : 'True Size Globe'
+              : 'Experimental Projection Lab'}
           </p>
           <h1>
-            {isMapView
-              ? 'The True Size of Countries (Mercator Map)'
-              : 'Countries on a True Globe'}
+            {isTrueSizePage
+              ? isMapView
+                ? 'The True Size of Countries (Mercator Map)'
+                : 'Countries on a True Globe'
+              : 'Redefine the Equator'}
           </h1>
           <p className="subhead">
-            {isMapView
-              ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
-              : 'Spin the orthographic globe to compare countries at their real scale.'}
+            {isTrueSizePage
+              ? isMapView
+                ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
+                : 'Spin the orthographic globe to compare countries at their real scale.'
+              : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'}
           </p>
         </div>
         <div className="math-card">
-          {isMapView && (
+          {isTrueSizePage && isMapView && (
             <>
               <div className="math-label">Mercator distortion</div>
               <div className="math-formula">1 / cos(latitude)</div>
               <div className="math-detail">
                 Drag scale = cos(original lat) / cos(current lat)
+              </div>
+            </>
+          )}
+          {!isTrueSizePage && (
+            <>
+              <div className="math-label">Equator control</div>
+              <div className="math-formula">Rotate the axis</div>
+              <div className="math-detail">
+                Drag the red handle to remap how Mercator stretches the Earth.
               </div>
             </>
           )}
@@ -1042,114 +1090,124 @@ function App() {
         </div>
       </header>
 
-      <div className="view-tabs" role="tablist" aria-label="Map views">
-        <button
-          className={`view-tab ${isMapView ? 'is-active' : ''}`}
-          type="button"
-          role="tab"
-          aria-selected={isMapView}
-          onClick={() => setActiveView('map')}
-        >
-          Mercator map
-        </button>
-        <button
-          className={`view-tab ${isMapView ? '' : 'is-active'}`}
-          type="button"
-          role="tab"
-          aria-selected={!isMapView}
-          onClick={() => setActiveView('globe')}
-        >
-          <span className="view-tab-content">
-            <Globe size={16} aria-hidden="true" />
-            3D Globe
-            <span className="view-tab-badge">new</span>
-          </span>
-        </button>
-      </div>
+      {isTrueSizePage && (
+        <div className="view-tabs" role="tablist" aria-label="Map views">
+          <button
+            className={`view-tab ${isMapView ? 'is-active' : ''}`}
+            type="button"
+            role="tab"
+            aria-selected={isMapView}
+            onClick={() => setActiveView('map')}
+          >
+            Mercator map
+          </button>
+          <button
+            className={`view-tab ${isMapView ? '' : 'is-active'}`}
+            type="button"
+            role="tab"
+            aria-selected={!isMapView}
+            onClick={() => setActiveView('globe')}
+          >
+            <span className="view-tab-content">
+              <Globe size={16} aria-hidden="true" />
+              3D Globe
+              <span className="view-tab-badge">new</span>
+            </span>
+          </button>
+        </div>
+      )}
 
-      {isMapView ? (
-        <MapView
-          loading={loading}
-          error={error}
-          mapWidth={MAP_WIDTH}
-          mapHeight={MAP_HEIGHT}
-          worldFeatures={worldFeatures}
-          pathGenerator={pathGenerator}
-          latLines={mapLatLines}
-          renderedCountries={mapRenderedCountries}
-          draggableCountries={draggableCountries}
-          selectedCountry={selectedCountry}
-          selectedDetails={selectedDetails}
-          selectedId={selectedId}
-          countryFilter={countryFilter}
-          filteredCountries={filteredCountries}
-          draggableIds={draggableIds}
-          areaFormatter={areaFormatter}
-          formatLatitude={formatLatitude}
-          formatScale={formatScale}
-          onResetPositions={resetPositions}
-          onSelectCountry={setSelectedId}
-          onCountryPointerDown={handlePointerDown}
-          onCountryFilterChange={setCountryFilter}
-          onToggleDraggable={toggleDraggable}
-        />
+      {isTrueSizePage ? (
+        isMapView ? (
+          <MapView
+            loading={loading}
+            error={error}
+            mapWidth={MAP_WIDTH}
+            mapHeight={MAP_HEIGHT}
+            worldFeatures={worldFeatures}
+            pathGenerator={pathGenerator}
+            latLines={mapLatLines}
+            renderedCountries={mapRenderedCountries}
+            draggableCountries={draggableCountries}
+            selectedCountry={selectedCountry}
+            selectedDetails={selectedDetails}
+            selectedId={selectedId}
+            countryFilter={countryFilter}
+            filteredCountries={filteredCountries}
+            draggableIds={draggableIds}
+            areaFormatter={areaFormatter}
+            formatLatitude={formatLatitude}
+            formatScale={formatScale}
+            onResetPositions={resetPositions}
+            onSelectCountry={setSelectedId}
+            onCountryPointerDown={handlePointerDown}
+            onCountryFilterChange={setCountryFilter}
+            onToggleDraggable={toggleDraggable}
+          />
+        ) : (
+          <GlobeView
+            loading={loading}
+            error={error}
+            worldFeatures={worldFeatures}
+            globePathGenerator={globePathGenerator}
+            globeSphere={globeSphere}
+            globeGraticule={globeGraticule}
+            planetPathGenerator={planetPathGenerator}
+            planetGraticule={planetGraticule}
+            globeHighlightCountries={globeHighlightCountries}
+            globeActiveMode={globeActiveMode}
+            globeDragging={globeDragging}
+            planetDragging={planetDragging}
+            solarSystemEnabled={solarSystemEnabled}
+            isGlobeFullscreen={isGlobeFullscreen}
+            activePlanet={activePlanet}
+            activePlanetId={activePlanetId}
+            planetRatio={planetRatio}
+            planetZoom={planetZoom}
+            canPlanetZoomIn={canPlanetZoomIn}
+            canPlanetZoomOut={canPlanetZoomOut}
+            planetCountries={planetPreviewCountries}
+            areaFormatter={areaFormatter}
+            selectedCountry={selectedCountry}
+            draggableCountries={draggableCountries}
+            countryFilter={countryFilter}
+            filteredCountries={filteredCountries}
+            draggableIds={draggableIds}
+            globeFrameRef={globeFrameRef}
+            globeSvgRef={globeSvgRef}
+            planetCanvasRef={planetCanvasRef}
+            planetSvgRef={planetSvgRef}
+            planetInsetRef={planetInsetRef}
+            globeSize={GLOBE_SIZE}
+            planetPreviewSize={PLANET_PREVIEW_SIZE}
+            planetRadius={planetRadius}
+            onResetScene={resetGlobeRotation}
+            onCenterSelected={() =>
+              selectedCountry ? focusOnCountry(selectedCountry) : null
+            }
+            onToggleFullscreen={toggleGlobeFullscreen}
+            onSetGlobeDragMode={setGlobeDragMode}
+            onToggleSolarSystem={() => setSolarSystemEnabled((prev) => !prev)}
+            onGlobePointerDown={handleGlobePointerDown}
+            onGlobeCountryPointerDown={handleGlobeCountryPointerDown}
+            onPlanetPointerDown={handlePlanetPointerDown}
+            onPlanetCountryPointerDown={handlePlanetCountryPointerDown}
+            onPlanetZoomIn={handlePlanetZoomIn}
+            onPlanetZoomOut={handlePlanetZoomOut}
+            onSelectPlanet={setActivePlanetId}
+            onFocusCountry={focusOnCountry}
+            onCountryFilterChange={setCountryFilter}
+            onToggleDraggable={toggleDraggable}
+            formatLatitude={formatLatitude}
+            formatLongitude={formatLongitude}
+            formatPlanetRatio={formatPlanetRatio}
+          />
+        )
       ) : (
-        <GlobeView
+        <EquatorShiftView
           loading={loading}
           error={error}
           worldFeatures={worldFeatures}
-          globePathGenerator={globePathGenerator}
-          globeSphere={globeSphere}
-          globeGraticule={globeGraticule}
-          planetPathGenerator={planetPathGenerator}
-          planetGraticule={planetGraticule}
-          globeHighlightCountries={globeHighlightCountries}
-          globeActiveMode={globeActiveMode}
-          globeDragging={globeDragging}
-          planetDragging={planetDragging}
-          solarSystemEnabled={solarSystemEnabled}
-          isGlobeFullscreen={isGlobeFullscreen}
-          activePlanet={activePlanet}
-          activePlanetId={activePlanetId}
-          planetRatio={planetRatio}
-          planetZoom={planetZoom}
-          canPlanetZoomIn={canPlanetZoomIn}
-          canPlanetZoomOut={canPlanetZoomOut}
-          planetCountries={planetPreviewCountries}
-          areaFormatter={areaFormatter}
-          selectedCountry={selectedCountry}
-          draggableCountries={draggableCountries}
-          countryFilter={countryFilter}
-          filteredCountries={filteredCountries}
-          draggableIds={draggableIds}
-          globeFrameRef={globeFrameRef}
-          globeSvgRef={globeSvgRef}
-          planetCanvasRef={planetCanvasRef}
-          planetSvgRef={planetSvgRef}
-          planetInsetRef={planetInsetRef}
-          globeSize={GLOBE_SIZE}
-          planetPreviewSize={PLANET_PREVIEW_SIZE}
-          planetRadius={planetRadius}
-          onResetScene={resetGlobeRotation}
-          onCenterSelected={() =>
-            selectedCountry ? focusOnCountry(selectedCountry) : null
-          }
-          onToggleFullscreen={toggleGlobeFullscreen}
-          onSetGlobeDragMode={setGlobeDragMode}
-          onToggleSolarSystem={() => setSolarSystemEnabled((prev) => !prev)}
-          onGlobePointerDown={handleGlobePointerDown}
-          onGlobeCountryPointerDown={handleGlobeCountryPointerDown}
-          onPlanetPointerDown={handlePlanetPointerDown}
-          onPlanetCountryPointerDown={handlePlanetCountryPointerDown}
-          onPlanetZoomIn={handlePlanetZoomIn}
-          onPlanetZoomOut={handlePlanetZoomOut}
-          onSelectPlanet={setActivePlanetId}
-          onFocusCountry={focusOnCountry}
-          onCountryFilterChange={setCountryFilter}
-          onToggleDraggable={toggleDraggable}
-          formatLatitude={formatLatitude}
-          formatLongitude={formatLongitude}
-          formatPlanetRatio={formatPlanetRatio}
         />
       )}
 

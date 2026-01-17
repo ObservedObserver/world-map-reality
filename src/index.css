@@ -12,6 +12,8 @@
   --mist-border: rgba(248, 245, 239, 0.15);
   --panel: rgba(10, 18, 34, 0.86);
   --shadow: 0 24px 60px rgba(5, 10, 20, 0.55);
+  --equator-accent: #ff5a5f;
+  --equator-glow: rgba(255, 90, 95, 0.35);
 
   color: #f8f5ef;
   background-color: var(--ocean-900);

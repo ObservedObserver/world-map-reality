@@ -1207,7 +1207,12 @@ function App() {
         <EquatorShiftView
           loading={loading}
           error={error}
+          countries={countries}
+          setCountries={setCountries}
           worldFeatures={worldFeatures}
+          draggableIds={draggableIds}
+          selectedId={selectedId}
+          onSelectCountry={setSelectedId}
         />
       )}
 

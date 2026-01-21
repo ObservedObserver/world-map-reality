@@ -218,7 +218,7 @@
 
 .equator-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
   gap: 24px;
   align-items: start;
 }
@@ -325,6 +325,132 @@
   font-weight: 600;
 }
 
+.download-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.download-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.download-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 92vw);
+  border-radius: 22px;
+  background: var(--panel);
+  border: 1px solid var(--mist-border);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.download-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.download-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.download-subtitle {
+  margin: 4px 0 0;
+  color: var(--mist);
+  font-size: 0.95rem;
+}
+
+.download-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.download-option {
+  border: 1px solid rgba(248, 245, 239, 0.12);
+  background: rgba(12, 26, 48, 0.65);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: left;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.download-option:hover {
+  border-color: rgba(248, 245, 239, 0.35);
+  background: rgba(18, 40, 68, 0.75);
+  transform: translateY(-1px);
+}
+
+.download-option:focus-visible {
+  outline: 2px solid rgba(246, 196, 83, 0.6);
+  outline-offset: 2px;
+}
+
+.download-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.download-preview {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(9, 16, 30, 0.75);
+  display: grid;
+  place-items: center;
+}
+
+.download-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.download-preview-placeholder {
+  font-size: 0.85rem;
+  color: var(--mist-strong);
+}
+
+.download-option-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.download-option-title {
+  font-weight: 600;
+}
+
+.download-option-action {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+}
+
 .map-shell {
   display: flex;
   flex-direction: column;
@@ -385,6 +511,16 @@
   text-decoration: none;
   display: inline-block;
   transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .github-button:hover {

@@ -7,6 +7,7 @@ import type {
 import type { LineString } from 'geojson'
 import type { GeoPermissibleObjects } from 'd3-geo'
 import * as d3 from 'd3'
+import { Download, RotateCcw, X } from 'lucide-react'
 import type { CountryDatum, CountryFeature, LonLat, Vec3 } from '../types'
 import {
   GLOBE_DEFAULT_ROTATION,
@@ -55,6 +56,11 @@ type EquatorRenderedCountry = {
 
 const EQUATOR_HANDLE_RADIUS = 7
 const EQUATOR_TILT_LIMIT = 85
+const WATERMARK_URL =
+  'https://www.runcell.dev/tool/true-size-map/custom-mercator-projection'
+const WATERMARK_HEIGHT = 32
+const COMBO_GAP = 24
+const COMBO_GLOBE_SCALE = 0.85
 
 const EquatorShiftView = ({
   loading,
@@ -74,7 +80,12 @@ const EquatorShiftView = ({
   const [globeDragging, setGlobeDragging] = useState(false)
   const [mapDragging, setMapDragging] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false)
+  const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null)
+  const [comboPreviewUrl, setComboPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const globeSvgRef = useRef<SVGSVGElement | null>(null)
+  const mapSvgRef = useRef<SVGSVGElement | null>(null)
   const equatorDragState = useRef<{ pointerId: number } | null>(null)
   const globeDragState = useRef<GlobeDragState | null>(null)
   const mapDragState = useRef<DragState | null>(null)
@@ -412,6 +423,249 @@ const EquatorShiftView = ({
     setGlobeRotation(GLOBE_DEFAULT_ROTATION)
   }
 
+  const mapExportStyles = useMemo(
+    () => `
+      .map-ocean { fill: rgba(12, 26, 48, 0.9); }
+      .world-base path {
+        fill: rgba(248, 245, 239, 0.08);
+        stroke: rgba(248, 245, 239, 0.18);
+        stroke-width: 0.6;
+      }
+      .country-shape {
+        stroke: rgba(255, 255, 255, 0.4);
+        stroke-width: 0.8;
+      }
+      .country-group.is-selected .country-shape {
+        stroke: #fff6de;
+        stroke-width: 2;
+      }
+      .country-group.is-dragging {
+        filter: url(#countryShadow);
+      }
+      .equator-line {
+        fill: none;
+        stroke: #ff5a5f;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+      }
+    `,
+    []
+  )
+
+  const globeExportStyles = useMemo(
+    () => `
+      .globe-sphere {
+        stroke: rgba(248, 245, 239, 0.25);
+        stroke-width: 1;
+      }
+      .globe-graticule path {
+        fill: none;
+        stroke: rgba(248, 245, 239, 0.2);
+        stroke-width: 0.6;
+        stroke-dasharray: 4 6;
+      }
+      .globe-world path {
+        fill: rgba(248, 245, 239, 0.12);
+        stroke: rgba(248, 245, 239, 0.22);
+        stroke-width: 0.6;
+      }
+      .equator-line {
+        fill: none;
+        stroke: #ff5a5f;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+      }
+      .equator-handle {
+        fill: #ff5a5f;
+        stroke: rgba(255, 255, 255, 0.85);
+        stroke-width: 1.6;
+      }
+    `,
+    []
+  )
+
+  const createSvgImage = useCallback(
+    (svg: SVGSVGElement, styleText: string, width: number, height: number) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const svgClone = svg.cloneNode(true) as SVGSVGElement
+        svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+        svgClone.setAttribute('width', `${width}`)
+        svgClone.setAttribute('height', `${height}`)
+
+        const defs =
+          svgClone.querySelector('defs') ??
+          (() => {
+            const nextDefs = document.createElementNS(
+              'http://www.w3.org/2000/svg',
+              'defs'
+            )
+            svgClone.insertBefore(nextDefs, svgClone.firstChild)
+            return nextDefs
+          })()
+        const style = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'style'
+        )
+        style.textContent = styleText
+        defs.appendChild(style)
+
+        const serializer = new XMLSerializer()
+        const svgText = serializer.serializeToString(svgClone)
+        const blob = new Blob([svgText], {
+          type: 'image/svg+xml;charset=utf-8',
+        })
+        const url = URL.createObjectURL(blob)
+        const image = new Image()
+        image.decoding = 'async'
+        image.onload = () => {
+          URL.revokeObjectURL(url)
+          resolve(image)
+        }
+        image.onerror = () => {
+          URL.revokeObjectURL(url)
+          reject(new Error('Failed to load SVG image.'))
+        }
+        image.src = url
+      }),
+    []
+  )
+
+  const drawWatermark = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    ctx.fillStyle = 'rgba(248, 245, 239, 0.65)'
+    ctx.font = '12px "IBM Plex Sans", "Segoe UI", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(WATERMARK_URL, width / 2, height - WATERMARK_HEIGHT / 2)
+  }, [])
+
+  const createMapPng = useCallback(async () => {
+    if (!mapSvgRef.current) {
+      return null
+    }
+    const image = await createSvgImage(
+      mapSvgRef.current,
+      mapExportStyles,
+      MAP_WIDTH,
+      MAP_HEIGHT
+    )
+    const scale = Math.max(1, window.devicePixelRatio || 1)
+    const height = MAP_HEIGHT + WATERMARK_HEIGHT
+    const canvas = document.createElement('canvas')
+    canvas.width = MAP_WIDTH * scale
+    canvas.height = height * scale
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      return null
+    }
+    ctx.scale(scale, scale)
+    ctx.fillStyle = '#0c1a30'
+    ctx.fillRect(0, 0, MAP_WIDTH, height)
+    ctx.drawImage(image, 0, 0, MAP_WIDTH, MAP_HEIGHT)
+    drawWatermark(ctx, MAP_WIDTH, height)
+    return canvas.toDataURL('image/png')
+  }, [createSvgImage, drawWatermark, mapExportStyles])
+
+  const createComboPng = useCallback(async () => {
+    if (!mapSvgRef.current || !globeSvgRef.current) {
+      return null
+    }
+    const [mapImage, globeImage] = await Promise.all([
+      createSvgImage(
+        mapSvgRef.current,
+        mapExportStyles,
+        MAP_WIDTH,
+        MAP_HEIGHT
+      ),
+      createSvgImage(
+        globeSvgRef.current,
+        globeExportStyles,
+        GLOBE_SIZE,
+        GLOBE_SIZE
+      ),
+    ])
+
+    const globeSize = Math.round(GLOBE_SIZE * COMBO_GLOBE_SCALE)
+    const contentHeight = Math.max(MAP_HEIGHT, globeSize)
+    const contentWidth = MAP_WIDTH + COMBO_GAP + globeSize
+    const height = contentHeight + WATERMARK_HEIGHT
+    const scale = Math.max(1, window.devicePixelRatio || 1)
+    const canvas = document.createElement('canvas')
+    canvas.width = contentWidth * scale
+    canvas.height = height * scale
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      return null
+    }
+    ctx.scale(scale, scale)
+    ctx.fillStyle = '#0c1a30'
+    ctx.fillRect(0, 0, contentWidth, height)
+
+    const mapY = (contentHeight - MAP_HEIGHT) / 2
+    const globeY = (contentHeight - globeSize) / 2
+    ctx.drawImage(mapImage, 0, mapY, MAP_WIDTH, MAP_HEIGHT)
+    ctx.drawImage(
+      globeImage,
+      MAP_WIDTH + COMBO_GAP,
+      globeY,
+      globeSize,
+      globeSize
+    )
+    drawWatermark(ctx, contentWidth, height)
+    return canvas.toDataURL('image/png')
+  }, [createSvgImage, drawWatermark, mapExportStyles, globeExportStyles])
+
+  const generatePreviews = useCallback(async () => {
+    setPreviewLoading(true)
+    try {
+      const results = await Promise.allSettled([createMapPng(), createComboPng()])
+      const mapUrl = results[0].status === 'fulfilled' ? results[0].value : null
+      const comboUrl =
+        results[1].status === 'fulfilled' ? results[1].value : null
+      setMapPreviewUrl(mapUrl ?? null)
+      setComboPreviewUrl(comboUrl ?? null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [createMapPng, createComboPng])
+
+  const handleOpenDownloadModal = useCallback(() => {
+    setMapPreviewUrl(null)
+    setComboPreviewUrl(null)
+    setDownloadModalOpen(true)
+    void generatePreviews()
+  }, [generatePreviews])
+
+  const handleCloseDownloadModal = useCallback(() => {
+    setDownloadModalOpen(false)
+    setMapPreviewUrl(null)
+    setComboPreviewUrl(null)
+  }, [])
+
+  const handleDownload = useCallback((dataUrl: string | null, filename: string) => {
+    if (!dataUrl) {
+      return
+    }
+    const link = document.createElement('a')
+    link.download = filename
+    link.href = dataUrl
+    link.click()
+  }, [])
+
+  useEffect(() => {
+    if (!downloadModalOpen) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseDownloadModal()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [downloadModalOpen, handleCloseDownloadModal])
+
   return (
     <main className="equator-layout">
       <section className="equator-panel">
@@ -425,11 +679,23 @@ const EquatorShiftView = ({
           </div>
           <div className="equator-panel-actions">
             <button
-              className="reset-button"
+              className="github-button icon-button"
+              type="button"
+              onClick={handleOpenDownloadModal}
+              disabled={loading || Boolean(error)}
+              aria-label="Download map image"
+              title="Download map image"
+            >
+              <Download size={16} aria-hidden="true" />
+            </button>
+            <button
+              className="reset-button icon-button"
               type="button"
               onClick={handleResetEquator}
+              aria-label="Reset equator"
+              title="Reset equator"
             >
-              Reset equator
+              <RotateCcw size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -442,6 +708,7 @@ const EquatorShiftView = ({
               viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
               role="img"
               aria-label="Mercator projection with a custom equator"
+              ref={mapSvgRef}
             >
               <defs>
                 <filter
@@ -506,11 +773,13 @@ const EquatorShiftView = ({
           </div>
           <div className="equator-panel-actions">
             <button
-              className="github-button"
+              className="github-button icon-button"
               type="button"
               onClick={handleResetView}
+              aria-label="Reset view"
+              title="Reset view"
             >
-              Reset view
+              <RotateCcw size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -586,6 +855,80 @@ const EquatorShiftView = ({
           </div>
         </div>
       </section>
+      {downloadModalOpen && (
+        <div className="download-modal" role="dialog" aria-modal="true">
+          <div
+            className="download-backdrop"
+            onClick={handleCloseDownloadModal}
+            aria-hidden="true"
+          />
+          <div className="download-dialog" role="document">
+            <div className="download-header">
+              <div>
+                <div className="download-title">Download image</div>
+                <p className="download-subtitle">
+                  Choose a layout and save the PNG with watermark.
+                </p>
+              </div>
+              <button
+                className="github-button icon-button"
+                type="button"
+                onClick={handleCloseDownloadModal}
+                aria-label="Close download modal"
+                title="Close"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="download-options">
+              <button
+                className="download-option"
+                type="button"
+                onClick={() =>
+                  handleDownload(mapPreviewUrl, 'custom-mercator-map.png')
+                }
+                disabled={!mapPreviewUrl || previewLoading}
+              >
+                <div className="download-preview">
+                  {mapPreviewUrl ? (
+                    <img src={mapPreviewUrl} alt="2D map preview" />
+                  ) : (
+                    <div className="download-preview-placeholder">
+                      {previewLoading ? 'Generating preview...' : 'No preview'}
+                    </div>
+                  )}
+                </div>
+                <div className="download-option-meta">
+                  <span className="download-option-title">2D map only</span>
+                  <span className="download-option-action">Download PNG</span>
+                </div>
+              </button>
+              <button
+                className="download-option"
+                type="button"
+                onClick={() =>
+                  handleDownload(comboPreviewUrl, 'custom-mercator-combo.png')
+                }
+                disabled={!comboPreviewUrl || previewLoading}
+              >
+                <div className="download-preview">
+                  {comboPreviewUrl ? (
+                    <img src={comboPreviewUrl} alt="2D map and 3D globe preview" />
+                  ) : (
+                    <div className="download-preview-placeholder">
+                      {previewLoading ? 'Generating preview...' : 'No preview'}
+                    </div>
+                  )}
+                </div>
+                <div className="download-option-meta">
+                  <span className="download-option-title">2D + 3D combo</span>
+                  <span className="download-option-action">Download PNG</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

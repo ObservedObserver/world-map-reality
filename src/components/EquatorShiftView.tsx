@@ -31,6 +31,10 @@ type EquatorShiftViewProps = {
   draggableIds: string[]
   selectedId: string | null
   onSelectCountry: (id: string) => void
+  countryFilter: string
+  filteredCountries: CountryDatum[]
+  onCountryFilterChange: (value: string) => void
+  onToggleDraggable: (id: string) => void
 }
 
 type GlobeDragState = {
@@ -71,6 +75,10 @@ const EquatorShiftView = ({
   draggableIds,
   selectedId,
   onSelectCountry,
+  countryFilter,
+  filteredCountries,
+  onCountryFilterChange,
+  onToggleDraggable,
 }: EquatorShiftViewProps) => {
   const [equatorRotation, setEquatorRotation] = useState<Vec3>([0, 0, 0])
   const [globeRotation, setGlobeRotation] = useState<Vec3>(
@@ -853,6 +861,88 @@ const EquatorShiftView = ({
               {formatLatitude(equatorPole[1])}
             </span>
           </div>
+        </div>
+      </section>
+      <section className="equator-panel equator-settings-card">
+        <div className="equator-panel-header">
+          <div>
+            <h2>Country settings</h2>
+            <p>
+              Choose which countries to highlight, then drag them to see how a
+              tilted equator reshapes the Mercator projection.
+            </p>
+          </div>
+        </div>
+        <div className="equator-settings-body">
+          <div className="panel-section">
+            <div className="panel-subtitle">Draggable set</div>
+            <div className="drag-search">
+              <input
+                type="search"
+                placeholder="Search countries..."
+                value={countryFilter}
+                onChange={(event) => onCountryFilterChange(event.target.value)}
+                aria-label="Search countries"
+              />
+            </div>
+            <div className="drag-list">
+              {filteredCountries.length > 0 ? (
+                filteredCountries.map((country) => {
+                  const isDraggable = draggableIds.includes(country.id)
+                  return (
+                    <label
+                      key={`equator-drag-${country.id}`}
+                      className={`drag-item ${isDraggable ? 'is-on' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isDraggable}
+                        onChange={() => onToggleDraggable(country.id)}
+                      />
+                      <span
+                        className="legend-swatch"
+                        style={{ backgroundColor: country.color }}
+                        aria-hidden="true"
+                      />
+                      <span>{country.name}</span>
+                    </label>
+                  )
+                })
+              ) : (
+                <div className="drag-empty">No matches.</div>
+              )}
+            </div>
+          </div>
+          <div className="panel-section">
+            <div className="panel-subtitle">Selected countries</div>
+            <div className="legend">
+              {draggableCountries.length > 0 ? (
+                draggableCountries.map((country) => (
+                  <button
+                    key={`equator-legend-${country.id}`}
+                    type="button"
+                    className={`legend-item ${
+                      selectedId === country.id ? 'is-active' : ''
+                    }`}
+                    onClick={() => onSelectCountry(country.id)}
+                  >
+                    <span
+                      className="legend-swatch"
+                      style={{ backgroundColor: country.color }}
+                      aria-hidden="true"
+                    />
+                    {country.name}
+                  </button>
+                ))
+              ) : (
+                <div className="legend-empty">No countries selected yet.</div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="panel-foot">
+          Tip: Antarctica is selected by default here because its distortion is
+          dramatic near the poles.
         </div>
       </section>
       {downloadModalOpen && (

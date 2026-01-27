@@ -56,6 +56,12 @@ import './App.css'
 
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 
+type ViewSelectionState = {
+  selectedId: string | null
+  draggableIds: string[]
+  countryFilter: string
+}
+
 type DragState = {
   id: string
   pointerId: number
@@ -145,6 +151,17 @@ function App() {
     initialSelection,
   } = useCountryData(projection)
 
+  const antarcticaId = useMemo(() => {
+    const directMatch = countries.find((country) => country.id === '10')
+    if (directMatch) {
+      return directMatch.id
+    }
+    const nameMatch = countries.find((country) =>
+      country.name.toLowerCase().includes('antarctica')
+    )
+    return nameMatch?.id ?? null
+  }, [countries])
+
   const pathGenerator = useMemo(
     () => d3.geoPath(projection),
     [projection]
@@ -220,18 +237,6 @@ function App() {
     [latLines, pathGenerator, projection]
   )
 
-  useEffect(() => {
-    if (loading) {
-      return
-    }
-    if (!selectedId && initialSelection.selectedId) {
-      setSelectedId(initialSelection.selectedId)
-    }
-    if (draggableIds.length === 0 && initialSelection.draggableIds.length > 0) {
-      setDraggableIds(initialSelection.draggableIds)
-    }
-  }, [loading, initialSelection, selectedId, draggableIds])
-
   const clearGlobeModifier = useCallback(() => {
     globeCountryDragState.current = null
     planetCountryDragState.current = null
@@ -250,6 +255,75 @@ function App() {
   const location = useLocation()
   const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
   const isTrueSizePage = !isEquatorLab
+
+  const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
+  const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
+  const lastIsEquatorLabRef = useRef(isEquatorLab)
+
+  useEffect(() => {
+    if (lastIsEquatorLabRef.current === isEquatorLab) {
+      return
+    }
+
+    lastIsEquatorLabRef.current = isEquatorLab
+
+    if (isEquatorLab) {
+      savedTrueSizeStateRef.current = {
+        selectedId,
+        draggableIds,
+        countryFilter,
+      }
+
+      const savedEquatorState = savedEquatorStateRef.current
+      setSelectedId(savedEquatorState?.selectedId ?? null)
+      setDraggableIds(savedEquatorState?.draggableIds ?? [])
+      setCountryFilter(savedEquatorState?.countryFilter ?? '')
+      return
+    }
+
+    savedEquatorStateRef.current = {
+      selectedId,
+      draggableIds,
+      countryFilter,
+    }
+
+    const savedTrueSizeState = savedTrueSizeStateRef.current
+    if (savedTrueSizeState) {
+      setSelectedId(savedTrueSizeState.selectedId)
+      setDraggableIds(savedTrueSizeState.draggableIds)
+      setCountryFilter(savedTrueSizeState.countryFilter)
+    }
+  }, [isEquatorLab, selectedId, draggableIds, countryFilter])
+
+  useEffect(() => {
+    if (loading) {
+      return
+    }
+
+    if (isEquatorLab) {
+      if (antarcticaId && draggableIds.length === 0) {
+        setDraggableIds([antarcticaId])
+      }
+      if (antarcticaId && !selectedId) {
+        setSelectedId(antarcticaId)
+      }
+      return
+    }
+
+    if (!selectedId && initialSelection.selectedId) {
+      setSelectedId(initialSelection.selectedId)
+    }
+    if (draggableIds.length === 0 && initialSelection.draggableIds.length > 0) {
+      setDraggableIds(initialSelection.draggableIds)
+    }
+  }, [
+    loading,
+    isEquatorLab,
+    antarcticaId,
+    initialSelection,
+    selectedId,
+    draggableIds,
+  ])
 
   const globeModifierPressed = useModifierKey(
     isTrueSizePage && activeView === 'globe',
@@ -1213,6 +1287,10 @@ function App() {
           draggableIds={draggableIds}
           selectedId={selectedId}
           onSelectCountry={setSelectedId}
+          countryFilter={countryFilter}
+          filteredCountries={filteredCountries}
+          onCountryFilterChange={setCountryFilter}
+          onToggleDraggable={toggleDraggable}
         />
       )}
 

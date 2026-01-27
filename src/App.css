@@ -235,6 +235,27 @@
   animation: fadeUp 0.9s ease 0.2s both;
 }
 
+.equator-settings-card {
+  grid-column: 1 / -1;
+  animation-delay: 0.35s;
+}
+
+.equator-settings-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.equator-settings-body .panel-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.equator-settings-card .panel-foot {
+  margin-top: 4px;
+}
+
 .equator-panel-header {
   display: flex;
   justify-content: space-between;
@@ -1388,6 +1409,10 @@
   }
 
   .equator-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .equator-settings-body {
     grid-template-columns: 1fr;
   }
 

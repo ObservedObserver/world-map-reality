@@ -1,4 +1,4 @@
-export const COUNTRY_ORDER = [304, 643, 124, 840, 76, 356, 180, 36, 392]
+export const COUNTRY_ORDER = [304, 643, 124, 840, 76, 180, 36, 392]
 
 export const COUNTRY_META: Record<number, { name: string; area: number }> = {
   304: { name: 'Greenland', area: 2166086 },

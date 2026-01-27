@@ -301,8 +301,15 @@ function App() {
     }
 
     if (isEquatorLab) {
-      if (antarcticaId && draggableIds.length === 0) {
-        setDraggableIds([antarcticaId])
+      if (draggableIds.length === 0) {
+        const baseDefaults = initialSelection.draggableIds
+        const withAntarctica =
+          antarcticaId && !baseDefaults.includes(antarcticaId)
+            ? [antarcticaId, ...baseDefaults]
+            : baseDefaults
+        if (withAntarctica.length > 0) {
+          setDraggableIds(withAntarctica)
+        }
       }
       if (antarcticaId && !selectedId) {
         setSelectedId(antarcticaId)

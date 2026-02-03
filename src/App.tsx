@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
 import { Globe, Twitter, Youtube } from 'lucide-react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import type {
   CountryDatum,
   CountryFeature,
@@ -57,6 +57,28 @@ import './App.css'
 const TRUE_SIZE_MAP_PATH = '/'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
+const SITE_BASE_URL = 'https://www.runcell.dev/tool/true-size-map'
+
+const META_BY_PAGE = {
+  map: {
+    title: 'True Size of Countries — Mercator Map Playground',
+    description:
+      'Drag countries on a Mercator world map to see how latitude changes their true scale in real time.',
+    canonical: SITE_BASE_URL,
+  },
+  globe: {
+    title: 'Countries on a True Globe — Size on Planets',
+    description:
+      'Spin the orthographic globe to compare countries at true scale and drop them on other planets.',
+    canonical: `${SITE_BASE_URL}${TRUE_SIZE_GLOBE_PATH}`,
+  },
+  equator: {
+    title: 'Equator Lab — Custom Mercator Projection',
+    description:
+      'Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.',
+    canonical: `${SITE_BASE_URL}${CUSTOM_MERCATOR_PATH}`,
+  },
+} as const
 
 type ViewSelectionState = {
   selectedId: string | null
@@ -263,6 +285,62 @@ function App() {
   const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
   const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
   const lastIsEquatorLabRef = useRef(isEquatorLab)
+  const pageMeta = useMemo(() => {
+    if (isEquatorLab) {
+      return META_BY_PAGE.equator
+    }
+    if (isGlobePage) {
+      return META_BY_PAGE.globe
+    }
+    return META_BY_PAGE.map
+  }, [isEquatorLab, isGlobePage])
+
+  useEffect(() => {
+    const setNamedMeta = (name: string, content: string) => {
+      let tag = document.querySelector<HTMLMetaElement>(
+        `meta[name="${name}"]`
+      )
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute('name', name)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', content)
+    }
+
+    const setPropertyMeta = (property: string, content: string) => {
+      let tag = document.querySelector<HTMLMetaElement>(
+        `meta[property="${property}"]`
+      )
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute('property', property)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', content)
+    }
+
+    const setCanonical = (href: string) => {
+      let link = document.querySelector<HTMLLinkElement>(
+        'link[rel="canonical"]'
+      )
+      if (!link) {
+        link = document.createElement('link')
+        link.setAttribute('rel', 'canonical')
+        document.head.appendChild(link)
+      }
+      link.setAttribute('href', href)
+    }
+
+    document.title = pageMeta.title
+    setNamedMeta('description', pageMeta.description)
+    setPropertyMeta('og:title', pageMeta.title)
+    setPropertyMeta('og:description', pageMeta.description)
+    setPropertyMeta('og:url', pageMeta.canonical)
+    setNamedMeta('twitter:title', pageMeta.title)
+    setNamedMeta('twitter:description', pageMeta.description)
+    setCanonical(pageMeta.canonical)
+  }, [pageMeta])
 
   useEffect(() => {
     if (lastIsEquatorLabRef.current === isEquatorLab) {
@@ -1084,24 +1162,41 @@ function App() {
   return (
     <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">
-        <Link
-          className={`page-tab ${isTrueSizePage ? 'is-active' : ''}`}
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
           to={TRUE_SIZE_MAP_PATH}
           role="tab"
-          aria-selected={isTrueSizePage}
-          aria-current={isTrueSizePage ? 'page' : undefined}
+          aria-selected={!isGlobePage && isTrueSizePage}
+          end
         >
-          True size
-        </Link>
-        <Link
-          className={`page-tab ${isEquatorLab ? 'is-active' : ''}`}
+          Mercator map
+        </NavLink>
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
+          to={TRUE_SIZE_GLOBE_PATH}
+          role="tab"
+          aria-selected={isGlobePage}
+        >
+          <span className="view-tab-content">
+            <Globe size={16} aria-hidden="true" />
+            Size on other planets
+            <span className="view-tab-badge">new</span>
+          </span>
+        </NavLink>
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
           to={CUSTOM_MERCATOR_PATH}
           role="tab"
           aria-selected={isEquatorLab}
-          aria-current={isEquatorLab ? 'page' : undefined}
         >
           Equator lab
-        </Link>
+        </NavLink>
       </div>
 
       <header className="app-header">
@@ -1127,77 +1222,34 @@ function App() {
                 : 'Spin the orthographic globe to compare countries at their real scale.'
               : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'}
           </p>
-        </div>
-        <div className="math-card">
-          {isTrueSizePage && isMapView && (
-            <>
-              <div className="math-label">Mercator distortion</div>
-              <div className="math-formula">1 / cos(latitude)</div>
-              <div className="math-detail">
-                Drag scale = cos(original lat) / cos(current lat)
-              </div>
-            </>
-          )}
-          {!isTrueSizePage && (
-            <>
-              <div className="math-label">Equator control</div>
-              <div className="math-formula">Rotate the axis</div>
-              <div className="math-detail">
-                Drag the red handle to remap how Mercator stretches the Earth.
-              </div>
-            </>
-          )}
-          <div className="author-label">Follow the author</div>
-          <div className="author-links">
-            <a
-              className="author-link"
-              href="https://x.com/ob12er"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow on Twitter"
-            >
-              <Twitter size={16} />
-              Twitter
-            </a>
-            <a
-              className="author-link"
-              href="https://www.youtube.com/@elwynnlab"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow on YouTube"
-            >
-              <Youtube size={16} />
-              YouTube
-            </a>
+          <div className="hero-cta">
+            <div className="author-label">Follow the author</div>
+            <div className="author-links">
+              <a
+                className="author-link"
+                href="https://x.com/ob12er"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow on Twitter"
+              >
+                <Twitter size={16} />
+                Twitter
+              </a>
+              <a
+                className="author-link"
+                href="https://www.youtube.com/@elwynnlab"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow on YouTube"
+              >
+                <Youtube size={16} />
+                YouTube
+              </a>
+            </div>
           </div>
         </div>
       </header>
 
-      {isTrueSizePage && (
-        <div className="view-tabs" role="tablist" aria-label="Map views">
-          <NavLink
-            className={() => `view-tab ${isMapView ? 'is-active' : ''}`}
-            to={TRUE_SIZE_MAP_PATH}
-            role="tab"
-            aria-selected={isMapView}
-            end
-          >
-            Mercator map
-          </NavLink>
-          <NavLink
-            className={() => `view-tab ${isMapView ? '' : 'is-active'}`}
-            to={TRUE_SIZE_GLOBE_PATH}
-            role="tab"
-            aria-selected={!isMapView}
-          >
-            <span className="view-tab-content">
-              <Globe size={16} aria-hidden="true" />
-              3D Globe
-              <span className="view-tab-badge">new</span>
-            </span>
-          </NavLink>
-        </div>
-      )}
 
       {isTrueSizePage ? (
         isMapView ? (

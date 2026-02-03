@@ -43,6 +43,20 @@
   font-size: 1.05rem;
 }
 
+.hero-cta {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero-cta .author-links {
+  margin-top: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .math-card {
   min-width: 240px;
   padding: 18px 20px;

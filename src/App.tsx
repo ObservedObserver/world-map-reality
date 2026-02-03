@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
 import { Globe, Twitter, Youtube } from 'lucide-react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import type {
   CountryDatum,
   CountryFeature,
@@ -54,6 +54,8 @@ import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
 import './App.css'
 
+const TRUE_SIZE_MAP_PATH = '/'
+const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 
 type ViewSelectionState = {
@@ -94,7 +96,6 @@ function App() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [draggableIds, setDraggableIds] = useState<string[]>([])
   const [countryFilter, setCountryFilter] = useState('')
-  const [activeView, setActiveView] = useState<'map' | 'globe'>('globe')
   const [globeDragMode, setGlobeDragMode] = useState<'rotate' | 'country'>(
     'rotate'
   )
@@ -254,7 +255,10 @@ function App() {
 
   const location = useLocation()
   const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
+  const isGlobePage = location.pathname.startsWith(TRUE_SIZE_GLOBE_PATH)
   const isTrueSizePage = !isEquatorLab
+  const activeView =
+    isTrueSizePage && isGlobePage ? 'globe' : 'map'
 
   const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
   const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
@@ -1080,26 +1084,24 @@ function App() {
   return (
     <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to="/"
+        <Link
+          className={`page-tab ${isTrueSizePage ? 'is-active' : ''}`}
+          to={TRUE_SIZE_MAP_PATH}
           role="tab"
           aria-selected={isTrueSizePage}
+          aria-current={isTrueSizePage ? 'page' : undefined}
         >
           True size
-        </NavLink>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
+        </Link>
+        <Link
+          className={`page-tab ${isEquatorLab ? 'is-active' : ''}`}
           to={CUSTOM_MERCATOR_PATH}
           role="tab"
-          aria-selected={!isTrueSizePage}
+          aria-selected={isEquatorLab}
+          aria-current={isEquatorLab ? 'page' : undefined}
         >
           Equator lab
-        </NavLink>
+        </Link>
       </div>
 
       <header className="app-header">
@@ -1173,28 +1175,27 @@ function App() {
 
       {isTrueSizePage && (
         <div className="view-tabs" role="tablist" aria-label="Map views">
-          <button
-            className={`view-tab ${isMapView ? 'is-active' : ''}`}
-            type="button"
+          <NavLink
+            className={() => `view-tab ${isMapView ? 'is-active' : ''}`}
+            to={TRUE_SIZE_MAP_PATH}
             role="tab"
             aria-selected={isMapView}
-            onClick={() => setActiveView('map')}
+            end
           >
             Mercator map
-          </button>
-          <button
-            className={`view-tab ${isMapView ? '' : 'is-active'}`}
-            type="button"
+          </NavLink>
+          <NavLink
+            className={() => `view-tab ${isMapView ? '' : 'is-active'}`}
+            to={TRUE_SIZE_GLOBE_PATH}
             role="tab"
             aria-selected={!isMapView}
-            onClick={() => setActiveView('globe')}
           >
             <span className="view-tab-content">
               <Globe size={16} aria-hidden="true" />
               3D Globe
               <span className="view-tab-badge">new</span>
             </span>
-          </button>
+          </NavLink>
         </div>
       )}
 

@@ -53,34 +53,12 @@ import {
 import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
+import seoMeta from './seo-meta.json'
 import './App.css'
 
 const TRUE_SIZE_MAP_PATH = '/'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
-const SITE_BASE_URL = 'https://www.runcell.dev/tool/true-size-map'
-const SITE_IMAGE_URL = `${SITE_BASE_URL}/true-size-of-country.jpg`
-
-const META_BY_PAGE = {
-  map: {
-    title: 'True Size of Countries — Mercator Map Playground',
-    description:
-      'Drag countries on a Mercator world map to see how latitude changes their true scale in real time.',
-    canonical: SITE_BASE_URL,
-  },
-  globe: {
-    title: 'Countries on a True Globe — Size on Planets',
-    description:
-      'Spin the orthographic globe to compare countries at true scale and drop them on other planets.',
-    canonical: `${SITE_BASE_URL}${TRUE_SIZE_GLOBE_PATH}`,
-  },
-  equator: {
-    title: 'Equator Lab — Custom Mercator Projection',
-    description:
-      'Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.',
-    canonical: `${SITE_BASE_URL}${CUSTOM_MERCATOR_PATH}`,
-  },
-} as const
 
 type ViewSelectionState = {
   selectedId: string | null
@@ -289,12 +267,12 @@ function App() {
   const lastIsEquatorLabRef = useRef(isEquatorLab)
   const pageMeta = useMemo(() => {
     if (isEquatorLab) {
-      return META_BY_PAGE.equator
+      return seoMeta.pages.equator
     }
     if (isGlobePage) {
-      return META_BY_PAGE.globe
+      return seoMeta.pages.globe
     }
-    return META_BY_PAGE.map
+    return seoMeta.pages.map
   }, [isEquatorLab, isGlobePage])
 
   useEffect(() => {
@@ -1124,11 +1102,11 @@ function App() {
         <meta property="og:title" content={pageMeta.title} />
         <meta property="og:description" content={pageMeta.description} />
         <meta property="og:url" content={pageMeta.canonical} />
-        <meta property="og:image" content={SITE_IMAGE_URL} />
+        <meta property="og:image" content={seoMeta.siteImageUrl} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageMeta.title} />
         <meta name="twitter:description" content={pageMeta.description} />
-        <meta name="twitter:image" content={SITE_IMAGE_URL} />
+        <meta name="twitter:image" content={seoMeta.siteImageUrl} />
       </Helmet>
       <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">

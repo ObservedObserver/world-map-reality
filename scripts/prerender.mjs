@@ -1,29 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 const DIST_DIR = path.resolve(process.cwd(), 'dist')
-const SITE_BASE_URL = 'https://www.runcell.dev/tool/true-size-map'
-const SITE_IMAGE_URL = `${SITE_BASE_URL}/true-size-of-country.jpg`
-
-const PAGE_META = {
-  '/': {
-    title: 'True Size of Countries — Mercator Map Playground',
-    description:
-      'Drag countries on a Mercator world map to see how latitude changes their true scale in real time.',
-    canonical: SITE_BASE_URL,
-  },
-  '/country-size-on-planets': {
-    title: 'Countries on a True Globe — Size on Planets',
-    description:
-      'Spin the orthographic globe to compare countries at true scale and drop them on other planets.',
-    canonical: `${SITE_BASE_URL}/country-size-on-planets`,
-  },
-  '/custom-mercator-projection': {
-    title: 'Equator Lab — Custom Mercator Projection',
-    description:
-      'Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.',
-    canonical: `${SITE_BASE_URL}/custom-mercator-projection`,
-  },
-}
+const SEO_META_PATH = path.resolve(process.cwd(), 'src/seo-meta.json')
 
 function toOutputFile(route) {
   if (route === '/') {
@@ -52,7 +30,7 @@ function stripSeoTags(html) {
   return patterns.reduce((result, pattern) => result.replace(pattern, ''), html)
 }
 
-function renderRouteHtml(templateHtml, page) {
+function renderRouteHtml(templateHtml, page, siteImageUrl) {
   let html = stripSeoTags(templateHtml)
   html = html.replace(
     /<title>[\s\S]*?<\/title>/i,
@@ -65,22 +43,25 @@ function renderRouteHtml(templateHtml, page) {
     `<meta property="og:title" content="${escapeHtml(page.title)}">`,
     `<meta property="og:description" content="${escapeHtml(page.description)}">`,
     `<meta property="og:url" content="${escapeHtml(page.canonical)}">`,
-    `<meta property="og:image" content="${escapeHtml(SITE_IMAGE_URL)}">`,
+    `<meta property="og:image" content="${escapeHtml(siteImageUrl)}">`,
     '<meta name="twitter:card" content="summary_large_image">',
     `<meta name="twitter:title" content="${escapeHtml(page.title)}">`,
     `<meta name="twitter:description" content="${escapeHtml(page.description)}">`,
-    `<meta name="twitter:image" content="${escapeHtml(SITE_IMAGE_URL)}">`,
+    `<meta name="twitter:image" content="${escapeHtml(siteImageUrl)}">`,
   ].join('\n    ')
   return html.replace('</head>', `    ${seoTags}\n  </head>`)
 }
 
 async function run() {
+  const seoMetaRaw = await readFile(SEO_META_PATH, 'utf8')
+  const seoMeta = JSON.parse(seoMetaRaw)
   const templatePath = path.join(DIST_DIR, 'index.html')
   const templateHtml = await readFile(templatePath, 'utf8')
 
-  for (const [route, pageMeta] of Object.entries(PAGE_META)) {
+  for (const [route, pageId] of Object.entries(seoMeta.routes)) {
+    const pageMeta = seoMeta.pages[pageId]
     const outputFile = toOutputFile(route)
-    const html = renderRouteHtml(templateHtml, pageMeta)
+    const html = renderRouteHtml(templateHtml, pageMeta, seoMeta.siteImageUrl)
     await mkdir(path.dirname(outputFile), { recursive: true })
     await writeFile(outputFile, html, 'utf8')
     console.log(`Prerendered ${route} -> ${path.relative(process.cwd(), outputFile)}`)

@@ -49,6 +49,10 @@ Build with static prerendered routes:
 yarn build:ssg
 ```
 
+SEO metadata source of truth:
+
+- `src/seo-meta.json`
+
 Default prerender routes:
 
 - `/`

@@ -1,0 +1,26 @@
+{
+  "siteBaseUrl": "https://www.runcell.dev/tool/true-size-map",
+  "siteImageUrl": "https://www.runcell.dev/tool/true-size-map/true-size-of-country.jpg",
+  "routes": {
+    "/": "map",
+    "/country-size-on-planets": "globe",
+    "/custom-mercator-projection": "equator"
+  },
+  "pages": {
+    "map": {
+      "title": "True Size of Countries — Mercator Map Playground",
+      "description": "Drag countries on a Mercator world map to see how latitude changes their true scale in real time.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map"
+    },
+    "globe": {
+      "title": "Countries on a True Globe — Size on Planets",
+      "description": "Spin the orthographic globe to compare countries at true scale and drop them on other planets.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/country-size-on-planets"
+    },
+    "equator": {
+      "title": "Equator Lab — Custom Mercator Projection",
+      "description": "Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/custom-mercator-projection"
+    }
+  }
+}

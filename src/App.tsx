@@ -4,6 +4,7 @@ import type { LineString } from 'geojson'
 import * as d3 from 'd3'
 import { Globe, Twitter, Youtube } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import type {
   CountryDatum,
   CountryFeature,
@@ -58,6 +59,7 @@ const TRUE_SIZE_MAP_PATH = '/'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SITE_BASE_URL = 'https://www.runcell.dev/tool/true-size-map'
+const SITE_IMAGE_URL = `${SITE_BASE_URL}/true-size-of-country.jpg`
 
 const META_BY_PAGE = {
   map: {
@@ -294,53 +296,6 @@ function App() {
     }
     return META_BY_PAGE.map
   }, [isEquatorLab, isGlobePage])
-
-  useEffect(() => {
-    const setNamedMeta = (name: string, content: string) => {
-      let tag = document.querySelector<HTMLMetaElement>(
-        `meta[name="${name}"]`
-      )
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('name', name)
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', content)
-    }
-
-    const setPropertyMeta = (property: string, content: string) => {
-      let tag = document.querySelector<HTMLMetaElement>(
-        `meta[property="${property}"]`
-      )
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('property', property)
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', content)
-    }
-
-    const setCanonical = (href: string) => {
-      let link = document.querySelector<HTMLLinkElement>(
-        'link[rel="canonical"]'
-      )
-      if (!link) {
-        link = document.createElement('link')
-        link.setAttribute('rel', 'canonical')
-        document.head.appendChild(link)
-      }
-      link.setAttribute('href', href)
-    }
-
-    document.title = pageMeta.title
-    setNamedMeta('description', pageMeta.description)
-    setPropertyMeta('og:title', pageMeta.title)
-    setPropertyMeta('og:description', pageMeta.description)
-    setPropertyMeta('og:url', pageMeta.canonical)
-    setNamedMeta('twitter:title', pageMeta.title)
-    setNamedMeta('twitter:description', pageMeta.description)
-    setCanonical(pageMeta.canonical)
-  }, [pageMeta])
 
   useEffect(() => {
     if (lastIsEquatorLabRef.current === isEquatorLab) {
@@ -1160,7 +1115,22 @@ function App() {
   const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
   const isMapView = activeView === 'map'
   return (
-    <div className="app">
+    <>
+      <Helmet prioritizeSeoTags>
+        <title>{pageMeta.title}</title>
+        <meta name="description" content={pageMeta.description} />
+        <link rel="canonical" href={pageMeta.canonical} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={pageMeta.title} />
+        <meta property="og:description" content={pageMeta.description} />
+        <meta property="og:url" content={pageMeta.canonical} />
+        <meta property="og:image" content={SITE_IMAGE_URL} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageMeta.title} />
+        <meta name="twitter:description" content={pageMeta.description} />
+        <meta name="twitter:image" content={SITE_IMAGE_URL} />
+      </Helmet>
+      <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">
         <NavLink
           className={({ isActive }) =>
@@ -1362,7 +1332,8 @@ function App() {
           </a>
         </p>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }
 

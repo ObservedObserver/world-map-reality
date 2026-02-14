@@ -58,9 +58,3 @@ Default prerender routes:
 The prerender script assumes subpath deployment under:
 
 - `/tool/true-size-map/`
-
-If your deployment path changes, override it when running prerender:
-
-```bash
-SSG_BASE_PATH=/your/subpath/ yarn prerender
-```

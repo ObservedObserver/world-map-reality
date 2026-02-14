@@ -1,27 +1,28 @@
-import { spawn } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import puppeteer from 'puppeteer'
-
-const ROUTES = ['/', '/country-size-on-planets', '/custom-mercator-projection']
-const PORT = Number(process.env.SSG_PORT ?? 4173)
 const DIST_DIR = path.resolve(process.cwd(), 'dist')
-const BASE_PATH = normalizeBasePath(process.env.SSG_BASE_PATH ?? '/tool/true-size-map/')
+const SITE_BASE_URL = 'https://www.runcell.dev/tool/true-size-map'
+const SITE_IMAGE_URL = `${SITE_BASE_URL}/true-size-of-country.jpg`
 
-function normalizeBasePath(input) {
-  if (input === '/') {
-    return '/'
-  }
-  const trimmed = input.replace(/^\/+|\/+$/g, '')
-  return `/${trimmed}/`
-}
-
-function toUrlPath(route) {
-  if (route === '/') {
-    return BASE_PATH
-  }
-  const normalized = route.replace(/^\/+/, '')
-  return `${BASE_PATH}${normalized}`
+const PAGE_META = {
+  '/': {
+    title: 'True Size of Countries — Mercator Map Playground',
+    description:
+      'Drag countries on a Mercator world map to see how latitude changes their true scale in real time.',
+    canonical: SITE_BASE_URL,
+  },
+  '/country-size-on-planets': {
+    title: 'Countries on a True Globe — Size on Planets',
+    description:
+      'Spin the orthographic globe to compare countries at true scale and drop them on other planets.',
+    canonical: `${SITE_BASE_URL}/country-size-on-planets`,
+  },
+  '/custom-mercator-projection': {
+    title: 'Equator Lab — Custom Mercator Projection',
+    description:
+      'Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.',
+    canonical: `${SITE_BASE_URL}/custom-mercator-projection`,
+  },
 }
 
 function toOutputFile(route) {
@@ -32,58 +33,57 @@ function toOutputFile(route) {
   return path.join(DIST_DIR, normalized, 'index.html')
 }
 
-async function waitForServer(url, timeoutMs = 20000) {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url, { redirect: 'manual' })
-      if (response.status < 500) {
-        return
-      }
-    } catch {
-      // Ignore while server is booting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250))
-  }
-  throw new Error(`Timed out waiting for preview server: ${url}`)
+function escapeHtml(value) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function stripSeoTags(html) {
+  const patterns = [
+    /<link[^>]*rel=["']canonical["'][^>]*>\s*/gi,
+    /<meta[^>]*name=["']description["'][^>]*>\s*/gi,
+    /<meta[^>]*property=["']og:[^"']+["'][^>]*>\s*/gi,
+    /<meta[^>]*name=["']twitter:[^"']+["'][^>]*>\s*/gi,
+  ]
+  return patterns.reduce((result, pattern) => result.replace(pattern, ''), html)
+}
+
+function renderRouteHtml(templateHtml, page) {
+  let html = stripSeoTags(templateHtml)
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    `<title>${escapeHtml(page.title)}</title>`
+  )
+  const seoTags = [
+    `<link rel="canonical" href="${escapeHtml(page.canonical)}">`,
+    `<meta name="description" content="${escapeHtml(page.description)}">`,
+    '<meta property="og:type" content="website">',
+    `<meta property="og:title" content="${escapeHtml(page.title)}">`,
+    `<meta property="og:description" content="${escapeHtml(page.description)}">`,
+    `<meta property="og:url" content="${escapeHtml(page.canonical)}">`,
+    `<meta property="og:image" content="${escapeHtml(SITE_IMAGE_URL)}">`,
+    '<meta name="twitter:card" content="summary_large_image">',
+    `<meta name="twitter:title" content="${escapeHtml(page.title)}">`,
+    `<meta name="twitter:description" content="${escapeHtml(page.description)}">`,
+    `<meta name="twitter:image" content="${escapeHtml(SITE_IMAGE_URL)}">`,
+  ].join('\n    ')
+  return html.replace('</head>', `    ${seoTags}\n  </head>`)
 }
 
 async function run() {
-  const preview = spawn(
-    process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    ['vite', 'preview', '--host', '127.0.0.1', '--strictPort', '--port', String(PORT)],
-    { stdio: 'inherit' }
-  )
+  const templatePath = path.join(DIST_DIR, 'index.html')
+  const templateHtml = await readFile(templatePath, 'utf8')
 
-  try {
-    await waitForServer(`http://127.0.0.1:${PORT}${BASE_PATH}`)
-
-    const browser = await puppeteer.launch({ headless: true })
-    try {
-      const page = await browser.newPage()
-      for (const route of ROUTES) {
-        const url = `http://127.0.0.1:${PORT}${toUrlPath(route)}`
-        await page.goto(url, { waitUntil: 'domcontentloaded' })
-        await page.waitForSelector('#root .app', { timeout: 15000 })
-        await page.waitForFunction(
-          () =>
-            document.title.length > 0 &&
-            Boolean(document.querySelector('meta[name="description"]')?.getAttribute('content')),
-          { timeout: 15000 }
-        )
-        await new Promise((resolve) => setTimeout(resolve, 300))
-
-        const html = `<!doctype html>\n${await page.content()}`
-        const outputFile = toOutputFile(route)
-        await mkdir(path.dirname(outputFile), { recursive: true })
-        await writeFile(outputFile, html, 'utf8')
-        console.log(`Prerendered ${route} -> ${path.relative(process.cwd(), outputFile)}`)
-      }
-    } finally {
-      await browser.close()
-    }
-  } finally {
-    preview.kill('SIGTERM')
+  for (const [route, pageMeta] of Object.entries(PAGE_META)) {
+    const outputFile = toOutputFile(route)
+    const html = renderRouteHtml(templateHtml, pageMeta)
+    await mkdir(path.dirname(outputFile), { recursive: true })
+    await writeFile(outputFile, html, 'utf8')
+    console.log(`Prerendered ${route} -> ${path.relative(process.cwd(), outputFile)}`)
   }
 }
 

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.runcell.dev/tool/true-size-map/sitemap.xml

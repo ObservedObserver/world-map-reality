@@ -40,3 +40,27 @@ The Mercator projection uses the formula `1 / cos(latitude)` to determine scale.
 - Greenland, for example, appears much larger than it actually is because it's near the North Pole
 
 By dragging countries to different latitudes, you can see how their apparent size changes based on Mercator's mathematical distortion, helping you understand why some countries look misleadingly large or small on traditional world maps.
+
+## SEO / SSG
+
+Build with static prerendered routes:
+
+```bash
+yarn build:ssg
+```
+
+Default prerender routes:
+
+- `/`
+- `/country-size-on-planets`
+- `/custom-mercator-projection`
+
+The prerender script assumes subpath deployment under:
+
+- `/tool/true-size-map/`
+
+If your deployment path changes, override it when running prerender:
+
+```bash
+SSG_BASE_PATH=/your/subpath/ yarn prerender
+```

@@ -1411,6 +1411,43 @@
   gap: 8px;
 }
 
+.sea-level-mode-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  background: rgba(8, 18, 34, 0.75);
+}
+
+.sea-level-mode-button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--mist);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.sea-level-mode-button.is-active {
+  border-color: rgba(127, 188, 255, 0.7);
+  background: rgba(28, 121, 255, 0.24);
+  color: #dbe9ff;
+}
+
+.sea-level-mode-button:hover {
+  border-color: rgba(248, 245, 239, 0.32);
+}
+
+.sea-level-mode-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mist-strong);
+}
+
 .sea-level-controls label {
   color: var(--mist);
   font-size: 0.92rem;

@@ -3,14 +3,20 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 const DEFAULT_SEA_LEVEL_METERS = 0
-const MIN_SEA_LEVEL_METERS = -120
-const MAX_SEA_LEVEL_METERS = 150
+const MIN_SEA_LEVEL_METERS = -5000
+const MAX_SEA_LEVEL_METERS = 5000
+const DEFAULT_MAP_VIEW_MODE = '2d'
 const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
 const SATELLITE_SOURCE_ID = 'satellite-source'
 const TERRAIN_SOURCE_ID = 'terrain-source'
 const SATELLITE_LAYER_ID = 'satellite-layer'
 
 const PRESET_LEVELS = [0, 2, 10, 30, 70]
+const GLOBE_PITCH_DEGREES = 52
+const GLOBE_BEARING_DEGREES = -14
+const MODE_TRANSITION_MS = 650
+
+type MapViewMode = '2d' | '3d'
 
 const MAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -109,8 +115,38 @@ function sampleFloodCoverage(map: maplibregl.Map, seaLevel: number): number | nu
   return Math.round((flooded / total) * 1000) / 10
 }
 
+function applyMapViewMode(
+  map: maplibregl.Map,
+  mode: MapViewMode,
+  animate = true
+) {
+  const duration = animate ? MODE_TRANSITION_MS : 0
+  if (mode === '3d') {
+    map.setProjection({ type: 'globe' })
+    map.dragRotate.enable()
+    map.touchZoomRotate.enableRotation()
+    map.easeTo({
+      pitch: GLOBE_PITCH_DEGREES,
+      bearing: GLOBE_BEARING_DEGREES,
+      duration,
+    })
+    return
+  }
+
+  map.setProjection({ type: 'mercator' })
+  map.dragRotate.disable()
+  map.touchZoomRotate.disableRotation()
+  map.easeTo({
+    pitch: 0,
+    bearing: 0,
+    duration,
+  })
+}
+
 const SeaLevelRiseView = () => {
   const [seaLevel, setSeaLevel] = useState(DEFAULT_SEA_LEVEL_METERS)
+  const [mapViewMode, setMapViewMode] =
+    useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
   const [hoverElevation, setHoverElevation] = useState<number | null>(null)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
@@ -118,6 +154,16 @@ const SeaLevelRiseView = () => {
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const seaLevelRef = useRef(DEFAULT_SEA_LEVEL_METERS)
+  const mapViewModeRef = useRef<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
+
+  useEffect(() => {
+    seaLevelRef.current = seaLevel
+  }, [seaLevel])
+
+  useEffect(() => {
+    mapViewModeRef.current = mapViewMode
+  }, [mapViewMode])
 
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -157,20 +203,16 @@ const SeaLevelRiseView = () => {
     setMapReady(false)
     setMapError(null)
 
-    const refreshCoverage = () => {
-      setCoverage(sampleFloodCoverage(map, seaLevel))
-    }
+    const refreshCoverage = () =>
+      setCoverage(sampleFloodCoverage(map, seaLevelRef.current))
 
     const handleLoad = () => {
       map.addControl(new maplibregl.NavigationControl(), 'top-right')
-      map.dragRotate.disable()
-      map.touchZoomRotate.disableRotation()
-      map.setPitch(0)
-      map.setBearing(0)
       map.setTerrain({
         source: TERRAIN_SOURCE_ID,
         exaggeration: 1,
       })
+      applyMapViewMode(map, mapViewModeRef.current, false)
 
       map.addLayer({
         id: SEA_LEVEL_LAYER_ID,
@@ -203,6 +245,8 @@ const SeaLevelRiseView = () => {
     map.on('mousemove', handleMove)
     map.on('moveend', refreshCoverage)
     map.on('zoomend', refreshCoverage)
+    map.on('pitchend', refreshCoverage)
+    map.on('rotateend', refreshCoverage)
     map.on('error', handleError)
 
     return () => {
@@ -210,12 +254,23 @@ const SeaLevelRiseView = () => {
       map.off('mousemove', handleMove)
       map.off('moveend', refreshCoverage)
       map.off('zoomend', refreshCoverage)
+      map.off('pitchend', refreshCoverage)
+      map.off('rotateend', refreshCoverage)
       map.off('error', handleError)
       map.remove()
       mapRef.current = null
       setMapReady(false)
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) {
+      return
+    }
+    applyMapViewMode(map, mapViewMode)
+    setCoverage(sampleFloodCoverage(map, seaLevelRef.current))
+  }, [mapReady, mapViewMode])
 
   useEffect(() => {
     const map = mapRef.current
@@ -242,6 +297,33 @@ const SeaLevelRiseView = () => {
         </div>
 
         <div className="sea-level-controls">
+          <div className="sea-level-mode-switch" role="group" aria-label="Sea level map mode">
+            <button
+              type="button"
+              className={`sea-level-mode-button ${
+                mapViewMode === '2d' ? 'is-active' : ''
+              }`}
+              aria-pressed={mapViewMode === '2d'}
+              onClick={() => setMapViewMode('2d')}
+            >
+              2D map
+            </button>
+            <button
+              type="button"
+              className={`sea-level-mode-button ${
+                mapViewMode === '3d' ? 'is-active' : ''
+              }`}
+              aria-pressed={mapViewMode === '3d'}
+              onClick={() => setMapViewMode('3d')}
+            >
+              3D globe
+            </button>
+          </div>
+          <p className="sea-level-mode-note">
+            {mapViewMode === '3d'
+              ? '3D mode enabled. Drag to rotate the globe.'
+              : '2D mode enabled. Flat Mercator map view.'}
+          </p>
           <label htmlFor="sea-level-slider">
             Sea level target: <strong>{seaLevel}m</strong>
           </label>
@@ -294,7 +376,11 @@ const SeaLevelRiseView = () => {
         </div>
         <div className="panel-metric">
           <span className="metric-label">Render mode</span>
-          <span className="metric-value">color-relief</span>
+          <span className="metric-value">
+            {mapViewMode === '3d'
+              ? 'color-relief + globe projection'
+              : 'color-relief + mercator projection'}
+          </span>
         </div>
       </aside>
     </main>

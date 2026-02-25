@@ -4,7 +4,8 @@
   "routes": {
     "/": "map",
     "/country-size-on-planets": "globe",
-    "/custom-mercator-projection": "equator"
+    "/custom-mercator-projection": "equator",
+    "/sea-level-rise-simulator": "seaLevel"
   },
   "pages": {
     "map": {
@@ -21,6 +22,11 @@
       "title": "Equator Lab — Custom Mercator Projection",
       "description": "Tilt the equator and explore how a custom Mercator projection reshapes countries and distortion.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/custom-mercator-projection"
+    },
+    "seaLevel": {
+      "title": "Sea Level Rise Simulator — Terrain RGB + Satellite Map",
+      "description": "Simulate sea level rise on a satellite world map by decoding Terrain RGB elevation and flooding low-lying regions in real time.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator"
     }
   }
 }

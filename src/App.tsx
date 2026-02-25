@@ -53,12 +53,14 @@ import {
 import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
+import SeaLevelRiseView from './components/SeaLevelRiseView'
 import seoMeta from './seo-meta.json'
 import './App.css'
 
 const TRUE_SIZE_MAP_PATH = '/'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
+const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
 
 type ViewSelectionState = {
   selectedId: string | null
@@ -258,14 +260,19 @@ function App() {
   const location = useLocation()
   const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
   const isGlobePage = location.pathname.startsWith(TRUE_SIZE_GLOBE_PATH)
-  const isTrueSizePage = !isEquatorLab
+  const isSeaLevelPage = location.pathname.startsWith(SEA_LEVEL_PATH)
+  const isTrueSizePage = !isEquatorLab && !isSeaLevelPage
   const activeView =
     isTrueSizePage && isGlobePage ? 'globe' : 'map'
+  const isMapView = activeView === 'map'
 
   const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
   const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
   const lastIsEquatorLabRef = useRef(isEquatorLab)
   const pageMeta = useMemo(() => {
+    if (isSeaLevelPage) {
+      return seoMeta.pages.seaLevel
+    }
     if (isEquatorLab) {
       return seoMeta.pages.equator
     }
@@ -273,7 +280,29 @@ function App() {
       return seoMeta.pages.globe
     }
     return seoMeta.pages.map
-  }, [isEquatorLab, isGlobePage])
+  }, [isEquatorLab, isGlobePage, isSeaLevelPage])
+
+  const headerEyebrow = isSeaLevelPage
+    ? 'Sea Level Rise Simulator'
+    : isTrueSizePage
+      ? isMapView
+        ? 'Mercator True Size Playground'
+        : 'True Size Globe'
+      : 'Experimental Projection Lab'
+  const headerTitle = isSeaLevelPage
+    ? 'Simulate Coastlines After Sea Level Rise'
+    : isTrueSizePage
+      ? isMapView
+        ? 'The True Size of Countries (Mercator Map)'
+        : 'Countries on a True Globe'
+      : 'Redefine the Equator'
+  const headerDescription = isSeaLevelPage
+    ? 'Blend satellite imagery with terrain elevation and preview regions that fall below a custom sea-level threshold.'
+    : isTrueSizePage
+      ? isMapView
+        ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
+        : 'Spin the orthographic globe to compare countries at their real scale.'
+      : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'
 
   useEffect(() => {
     if (lastIsEquatorLabRef.current === isEquatorLab) {
@@ -1091,7 +1120,6 @@ function App() {
   )
 
   const globeActiveMode = globeModifierPressed ? 'country' : globeDragMode
-  const isMapView = activeView === 'map'
   return (
     <>
       <Helmet prioritizeSeoTags>
@@ -1145,31 +1173,23 @@ function App() {
         >
           Equator lab
         </NavLink>
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
+          to={SEA_LEVEL_PATH}
+          role="tab"
+          aria-selected={isSeaLevelPage}
+        >
+          Sea level rise
+        </NavLink>
       </div>
 
       <header className="app-header">
         <div className="header-copy">
-          <p className="eyebrow">
-            {isTrueSizePage
-              ? isMapView
-                ? 'Mercator True Size Playground'
-                : 'True Size Globe'
-              : 'Experimental Projection Lab'}
-          </p>
-          <h1>
-            {isTrueSizePage
-              ? isMapView
-                ? 'The True Size of Countries (Mercator Map)'
-                : 'Countries on a True Globe'
-              : 'Redefine the Equator'}
-          </h1>
-          <p className="subhead">
-            {isTrueSizePage
-              ? isMapView
-                ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
-                : 'Spin the orthographic globe to compare countries at their real scale.'
-              : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'}
-          </p>
+          <p className="eyebrow">{headerEyebrow}</p>
+          <h1>{headerTitle}</h1>
+          <p className="subhead">{headerDescription}</p>
           <div className="hero-cta">
             <div className="author-label">Follow the author</div>
             <div className="author-links">
@@ -1199,7 +1219,9 @@ function App() {
       </header>
 
 
-      {isTrueSizePage ? (
+      {isSeaLevelPage ? (
+        <SeaLevelRiseView />
+      ) : isTrueSizePage ? (
         isMapView ? (
           <MapView
             loading={loading}

@@ -18,6 +18,10 @@ https://github.com/user-attachments/assets/548db03a-6b04-49a5-a41c-32a8cb9c4764
 
 [Online playground](https://www.runcell.dev/tool/true-size-map)
 
+## Use case 3: Sea level rise simulator
+
+WebGL + Mapbox GL based flood preview using Terrain RGB elevation decoding on top of a satellite basemap.
+
 ## About
 
 The Mercator projection is one of the most common map projections, but it has a significant flaw: it distorts the size of countries based on their latitude. Countries near the poles appear much larger than they actually are, while countries near the equator are shown more accurately.
@@ -58,7 +62,15 @@ Default prerender routes:
 - `/`
 - `/country-size-on-planets`
 - `/custom-mercator-projection`
+- `/sea-level-rise-simulator`
 
 The prerender script assumes subpath deployment under:
 
 - `/tool/true-size-map/`
+
+## Sea-level data source
+
+The sea-level simulator now runs on `maplibre-gl` with public, token-free sources:
+
+- Satellite imagery: Esri World Imagery tiles
+- Elevation DEM: elevation-tiles-prod Terrarium tiles

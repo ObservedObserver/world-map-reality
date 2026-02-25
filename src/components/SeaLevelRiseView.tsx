@@ -198,6 +198,7 @@ const SeaLevelRiseView = () => {
       zoom: 1.55,
       pitch: 0,
       bearing: 0,
+      attributionControl: false,
     })
     mapRef.current = map
     setMapReady(false)

@@ -874,70 +874,83 @@ const EquatorShiftView = ({
           </div>
         </div>
         <div className="equator-settings-body">
-          <div className="panel-section">
-            <div className="panel-subtitle">Draggable set</div>
-            <div className="drag-search">
-              <input
-                type="search"
-                placeholder="Search countries..."
-                value={countryFilter}
-                onChange={(event) => onCountryFilterChange(event.target.value)}
-                aria-label="Search countries"
-              />
+          <div className="equator-settings-content">
+            <div className="panel-section">
+              <div className="panel-subtitle">Draggable set</div>
+              <div className="drag-search">
+                <input
+                  type="search"
+                  placeholder="Search countries..."
+                  value={countryFilter}
+                  onChange={(event) => onCountryFilterChange(event.target.value)}
+                  aria-label="Search countries"
+                />
+              </div>
+              <div className="drag-list">
+                {filteredCountries.length > 0 ? (
+                  filteredCountries.map((country) => {
+                    const isDraggable = draggableIds.includes(country.id)
+                    return (
+                      <label
+                        key={`equator-drag-${country.id}`}
+                        className={`drag-item ${isDraggable ? 'is-on' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isDraggable}
+                          onChange={() => onToggleDraggable(country.id)}
+                        />
+                        <span
+                          className="legend-swatch"
+                          style={{ backgroundColor: country.color }}
+                          aria-hidden="true"
+                        />
+                        <span>{country.name}</span>
+                      </label>
+                    )
+                  })
+                ) : (
+                  <div className="drag-empty">No matches.</div>
+                )}
+              </div>
             </div>
-            <div className="drag-list">
-              {filteredCountries.length > 0 ? (
-                filteredCountries.map((country) => {
-                  const isDraggable = draggableIds.includes(country.id)
-                  return (
-                    <label
-                      key={`equator-drag-${country.id}`}
-                      className={`drag-item ${isDraggable ? 'is-on' : ''}`}
+            <div className="panel-section">
+              <div className="panel-subtitle">Selected countries</div>
+              <div className="legend">
+                {draggableCountries.length > 0 ? (
+                  draggableCountries.map((country) => (
+                    <button
+                      key={`equator-legend-${country.id}`}
+                      type="button"
+                      className={`legend-item ${
+                        selectedId === country.id ? 'is-active' : ''
+                      }`}
+                      onClick={() => onSelectCountry(country.id)}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isDraggable}
-                        onChange={() => onToggleDraggable(country.id)}
-                      />
                       <span
                         className="legend-swatch"
                         style={{ backgroundColor: country.color }}
                         aria-hidden="true"
                       />
-                      <span>{country.name}</span>
-                    </label>
-                  )
-                })
-              ) : (
-                <div className="drag-empty">No matches.</div>
-              )}
+                      {country.name}
+                    </button>
+                  ))
+                ) : (
+                  <div className="legend-empty">No countries selected yet.</div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="panel-section">
-            <div className="panel-subtitle">Selected countries</div>
-            <div className="legend">
-              {draggableCountries.length > 0 ? (
-                draggableCountries.map((country) => (
-                  <button
-                    key={`equator-legend-${country.id}`}
-                    type="button"
-                    className={`legend-item ${
-                      selectedId === country.id ? 'is-active' : ''
-                    }`}
-                    onClick={() => onSelectCountry(country.id)}
-                  >
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: country.color }}
-                      aria-hidden="true"
-                    />
-                    {country.name}
-                  </button>
-                ))
-              ) : (
-                <div className="legend-empty">No countries selected yet.</div>
-              )}
-            </div>
+          <div className="equator-settings-video">
+            <iframe
+              src="https://www.youtube.com/embed/PufwM4Vo3W4"
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="equator-video-embed"
+            ></iframe>
           </div>
         </div>
         <div className="panel-foot">

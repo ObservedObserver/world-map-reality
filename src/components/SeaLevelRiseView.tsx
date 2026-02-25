@@ -81,40 +81,6 @@ function shouldIgnoreError(message: string | undefined): boolean {
   return normalized.includes('signal is aborted') || normalized.includes('aborterror')
 }
 
-function sampleFloodCoverage(map: maplibregl.Map, seaLevel: number): number | null {
-  const canvas = map.getCanvas()
-  const width = canvas.clientWidth
-  const height = canvas.clientHeight
-  if (!width || !height) {
-    return null
-  }
-
-  const cols = 16
-  const rows = 10
-  let total = 0
-  let flooded = 0
-  for (let cx = 0; cx < cols; cx += 1) {
-    for (let cy = 0; cy < rows; cy += 1) {
-      const x = ((cx + 0.5) / cols) * width
-      const y = ((cy + 0.5) / rows) * height
-      const lngLat = map.unproject([x, y])
-      const elevation = map.queryTerrainElevation(lngLat)
-      if (elevation === null) {
-        continue
-      }
-      total += 1
-      if (elevation < seaLevel) {
-        flooded += 1
-      }
-    }
-  }
-
-  if (total === 0) {
-    return null
-  }
-  return Math.round((flooded / total) * 1000) / 10
-}
-
 function applyMapViewMode(
   map: maplibregl.Map,
   mode: MapViewMode,
@@ -147,19 +113,12 @@ const SeaLevelRiseView = () => {
   const [seaLevel, setSeaLevel] = useState(DEFAULT_SEA_LEVEL_METERS)
   const [mapViewMode, setMapViewMode] =
     useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
-  const [hoverElevation, setHoverElevation] = useState<number | null>(null)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [coverage, setCoverage] = useState<number | null>(null)
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const seaLevelRef = useRef(DEFAULT_SEA_LEVEL_METERS)
   const mapViewModeRef = useRef<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
-
-  useEffect(() => {
-    seaLevelRef.current = seaLevel
-  }, [seaLevel])
 
   useEffect(() => {
     mapViewModeRef.current = mapViewMode
@@ -204,9 +163,6 @@ const SeaLevelRiseView = () => {
     setMapReady(false)
     setMapError(null)
 
-    const refreshCoverage = () =>
-      setCoverage(sampleFloodCoverage(map, seaLevelRef.current))
-
     const handleLoad = () => {
       map.addControl(new maplibregl.NavigationControl(), 'top-right')
       map.setTerrain({
@@ -226,12 +182,6 @@ const SeaLevelRiseView = () => {
       })
 
       setMapReady(true)
-      refreshCoverage()
-    }
-
-    const handleMove = (event: maplibregl.MapMouseEvent) => {
-      const elevation = map.queryTerrainElevation(event.lngLat)
-      setHoverElevation(elevation ?? null)
     }
 
     const handleError = (event: maplibregl.ErrorEvent) => {
@@ -243,20 +193,10 @@ const SeaLevelRiseView = () => {
     }
 
     map.on('load', handleLoad)
-    map.on('mousemove', handleMove)
-    map.on('moveend', refreshCoverage)
-    map.on('zoomend', refreshCoverage)
-    map.on('pitchend', refreshCoverage)
-    map.on('rotateend', refreshCoverage)
     map.on('error', handleError)
 
     return () => {
       map.off('load', handleLoad)
-      map.off('mousemove', handleMove)
-      map.off('moveend', refreshCoverage)
-      map.off('zoomend', refreshCoverage)
-      map.off('pitchend', refreshCoverage)
-      map.off('rotateend', refreshCoverage)
       map.off('error', handleError)
       map.remove()
       mapRef.current = null
@@ -270,7 +210,6 @@ const SeaLevelRiseView = () => {
       return
     }
     applyMapViewMode(map, mapViewMode)
-    setCoverage(sampleFloodCoverage(map, seaLevelRef.current))
   }, [mapReady, mapViewMode])
 
   useEffect(() => {
@@ -283,7 +222,6 @@ const SeaLevelRiseView = () => {
       'color-relief-color',
       buildFloodExpression(seaLevel) as maplibregl.ExpressionSpecification
     )
-    setCoverage(sampleFloodCoverage(map, seaLevel))
   }, [mapReady, seaLevel])
 
   return (
@@ -361,29 +299,6 @@ const SeaLevelRiseView = () => {
         </div>
       </section>
 
-      <aside className="sea-level-info-card">
-        <div className="panel-title">Flood Signal</div>
-        <div className="panel-metric">
-          <span className="metric-label">Hover elevation</span>
-          <span className="metric-value">
-            {hoverElevation === null ? '--' : `${Math.round(hoverElevation)} m`}
-          </span>
-        </div>
-        <div className="panel-metric">
-          <span className="metric-label">Sampled flooded area</span>
-          <span className="metric-value">
-            {coverage === null ? '--' : `${coverage}%`}
-          </span>
-        </div>
-        <div className="panel-metric">
-          <span className="metric-label">Render mode</span>
-          <span className="metric-value">
-            {mapViewMode === '3d'
-              ? 'color-relief + globe projection'
-              : 'color-relief + mercator projection'}
-          </span>
-        </div>
-      </aside>
     </main>
   )
 }

@@ -1396,7 +1396,7 @@
 
 .sea-level-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -1528,37 +1528,6 @@
   padding: 8px 10px;
 }
 
-.sea-level-info-card {
-  padding: 18px;
-  border-radius: 20px;
-  background: var(--panel);
-  border: 1px solid var(--mist-border);
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  position: sticky;
-  top: 18px;
-  animation: fadeUp 0.9s ease 0.25s both;
-}
-
-.sea-level-info-card p {
-  margin: 0;
-  color: var(--mist);
-  font-size: 0.9rem;
-}
-
-.sea-level-info-card code {
-  display: block;
-  margin-top: 4px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(8, 18, 34, 0.85);
-  border: 1px solid rgba(248, 245, 239, 0.15);
-  color: #cce2ff;
-  font-size: 0.8rem;
-}
-
 .app-footer {
   margin-top: 48px;
   padding-top: 24px;
@@ -1622,10 +1591,6 @@
   }
 
   .info-panel {
-    position: static;
-  }
-
-  .sea-level-info-card {
     position: static;
   }
 

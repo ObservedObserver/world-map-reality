@@ -256,14 +256,32 @@
 
 .equator-settings-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 24px;
   align-items: start;
 }
 
-.equator-settings-body .panel-section:first-child {
+.equator-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.equator-settings-content .panel-section:first-child {
   border-top: none;
   padding-top: 0;
+}
+
+.equator-settings-video {
+  position: sticky;
+  top: 24px;
+}
+
+.equator-video-embed {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  border: none;
 }
 
 .equator-settings-card .panel-foot {
@@ -1597,6 +1615,10 @@
 
   .equator-settings-body {
     grid-template-columns: 1fr;
+  }
+
+  .equator-settings-video {
+    position: static;
   }
 
   .info-panel {

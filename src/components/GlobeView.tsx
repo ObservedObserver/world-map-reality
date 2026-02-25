@@ -529,6 +529,17 @@ const GlobeView = ({
       <div className="panel-foot">
         Switch to the Mercator tab to change the comparison set.
       </div>
+      <div className="panel-section" style={{ marginTop: '1rem' }}>
+        <iframe
+          src="https://www.youtube.com/embed/IMfNAKvY3zY"
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+          style={{ width: '100%', aspectRatio: '9/16', borderRadius: '12px' }}
+        ></iframe>
+      </div>
     </aside>
   </main>
 )

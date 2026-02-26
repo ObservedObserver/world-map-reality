@@ -24,8 +24,8 @@
       "canonical": "https://www.runcell.dev/tool/true-size-map/custom-mercator-projection"
     },
     "seaLevel": {
-      "title": "Sea Level Rise Simulator — Terrain RGB + Satellite Map",
-      "description": "Simulate sea level rise on a satellite world map by decoding Terrain RGB elevation and flooding low-lying regions in real time.",
+      "title": "Sea Level Rise Interactive Map",
+      "description": "Simulate sea level rise on a satellite world map or 3d globe map, online simulator for sea level rise.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator"
     }
   }

@@ -20,6 +20,15 @@ https://github.com/user-attachments/assets/548db03a-6b04-49a5-a41c-32a8cb9c4764
 
 ## Use case 3: Sea level rise simulator
 
+<img width="2466" height="1738" alt="screenshot-20260226-010756" src="https://github.com/user-attachments/assets/4b12fb0c-8a10-47ab-bdf2-d03faf2dbcda" />
+
+<img width="2382" height="1712" alt="image" src="https://github.com/user-attachments/assets/a52e7547-72ad-432f-ab77-b3b8f50a4259" />
+
+<img width="2462" height="1742" alt="image" src="https://github.com/user-attachments/assets/1918a221-4d40-4eac-bf4d-7953c550da0b" />
+
+
+
+
 WebGL + Mapbox GL based flood preview using Terrain RGB elevation decoding on top of a satellite basemap.
 
 ## About
@@ -45,7 +54,7 @@ The Mercator projection uses the formula `1 / cos(latitude)` to determine scale.
 
 By dragging countries to different latitudes, you can see how their apparent size changes based on Mercator's mathematical distortion, helping you understand why some countries look misleadingly large or small on traditional world maps.
 
-## SEO / SSG
+## SSG
 
 Build with static prerendered routes:
 

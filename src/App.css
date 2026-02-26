@@ -1528,6 +1528,172 @@
   padding: 8px 10px;
 }
 
+.share-card {
+  margin-top: 10px;
+  width: min(100%, 920px);
+  align-self: center;
+  padding: 26px;
+  border-radius: 22px;
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      rgba(246, 196, 83, 0.16),
+      transparent 55%
+    ),
+    rgba(10, 18, 34, 0.88);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeUp 0.9s ease 0.35s both;
+}
+
+.share-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.share-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 245, 239, 0.22);
+  background: rgba(248, 245, 239, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.share-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+}
+
+.share-card-header p {
+  margin: 4px 0 0;
+  color: var(--mist);
+}
+
+.share-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-label {
+  color: rgba(248, 245, 239, 0.92);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.share-copy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 136px;
+  gap: 12px;
+}
+
+.share-link-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  background: rgba(7, 15, 28, 0.7);
+  color: rgba(248, 245, 239, 0.95);
+  font-size: 1rem;
+  padding: 12px 14px;
+}
+
+.share-copy-button {
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  background: rgba(248, 245, 239, 0.08);
+  color: rgba(248, 245, 239, 0.95);
+  font-size: 1.05rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.share-copy-button:hover {
+  border-color: rgba(246, 196, 83, 0.6);
+  background: rgba(246, 196, 83, 0.2);
+  color: var(--gold);
+}
+
+.share-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.share-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  background: rgba(7, 15, 28, 0.62);
+  color: rgba(248, 245, 239, 0.9);
+  text-decoration: none;
+  font-size: 1.02rem;
+  font-weight: 500;
+  padding: 12px 14px;
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.share-option:hover {
+  border-color: rgba(246, 196, 83, 0.58);
+  background: rgba(246, 196, 83, 0.16);
+  color: var(--gold);
+}
+
+.share-option-email {
+  justify-content: center;
+}
+
+.share-divider {
+  height: 1px;
+  background: rgba(248, 245, 239, 0.18);
+}
+
+.share-more-button {
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.26);
+  background: #121723;
+  color: rgba(248, 245, 239, 0.96);
+  font-size: 1.08rem;
+  font-weight: 600;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.share-more-button:hover {
+  border-color: rgba(246, 196, 83, 0.58);
+  background: #1a2232;
+  color: var(--gold);
+}
+
+.share-hashtags {
+  margin: 0;
+  color: var(--mist-strong);
+  font-size: 0.95rem;
+}
+
 .app-footer {
   margin-top: 48px;
   padding-top: 24px;
@@ -1570,6 +1736,14 @@
     align-items: flex-start;
   }
 
+  .share-copy-row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-options-grid {
+    grid-template-columns: 1fr;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
@@ -1603,6 +1777,10 @@
 @media (max-width: 600px) {
   .app {
     padding: 32px 18px 56px;
+  }
+
+  .share-card {
+    padding: 20px 16px;
   }
 
   .page-tabs {

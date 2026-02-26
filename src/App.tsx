@@ -2,7 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
-import { Globe, Twitter, Youtube } from 'lucide-react'
+import {
+  Book,
+  Check,
+  Copy,
+  Facebook,
+  Globe,
+  Linkedin,
+  Mail,
+  MessageCircle,
+  Share2,
+  Tv,
+  Twitter,
+  Youtube,
+} from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import type {
@@ -114,6 +127,9 @@ function App() {
   const [planetZoom, setPlanetZoom] = useState(1)
   const [globeRotation, setGlobeRotation] = useState<Vec3>(
     GLOBE_DEFAULT_ROTATION
+  )
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>(
+    'idle'
   )
   const [globeDragging, setGlobeDragging] = useState(false)
   const [planetDragging, setPlanetDragging] = useState(false)
@@ -281,6 +297,64 @@ function App() {
     }
     return seoMeta.pages.map
   }, [isEquatorLab, isGlobePage, isSeaLevelPage])
+  const shareUrl = pageMeta.canonical
+  const shareLinks = useMemo(() => {
+    const encodedUrl = encodeURIComponent(shareUrl)
+    const encodedTitle = encodeURIComponent(pageMeta.title)
+    const encodedEmailBody = encodeURIComponent(
+      `${pageMeta.description}\n\n${shareUrl}`
+    )
+    return {
+      x: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}&hashtags=TrueSizeMap,Cartography,Geography`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${pageMeta.title} ${shareUrl}`)}`,
+      email: `mailto:?subject=${encodedTitle}&body=${encodedEmailBody}`,
+    }
+  }, [pageMeta.description, pageMeta.title, shareUrl])
+
+  const handleCopyShareLink = useCallback(async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        textArea.setAttribute('readonly', 'true')
+        textArea.style.position = 'absolute'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        const copySucceeded = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        if (!copySucceeded) {
+          throw new Error('Clipboard copy command failed')
+        }
+      }
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('failed')
+    }
+  }, [shareUrl])
+
+  const handleNativeShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: pageMeta.title,
+          text: pageMeta.description,
+          url: shareUrl,
+        })
+        return
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return
+        }
+      }
+    }
+
+    window.open(shareLinks.x, '_blank', 'noopener,noreferrer')
+  }, [pageMeta.description, pageMeta.title, shareLinks.x, shareUrl])
 
   const headerEyebrow = isSeaLevelPage
     ? 'Sea Level Rise Simulator'
@@ -338,6 +412,14 @@ function App() {
       setCountryFilter(savedTrueSizeState.countryFilter)
     }
   }, [isEquatorLab, selectedId, draggableIds, countryFilter])
+
+  useEffect(() => {
+    if (copyStatus === 'idle') {
+      return
+    }
+    const timeoutId = window.setTimeout(() => setCopyStatus('idle'), 1800)
+    return () => window.clearTimeout(timeoutId)
+  }, [copyStatus])
 
   useEffect(() => {
     if (loading) {
@@ -1213,6 +1295,26 @@ function App() {
                 <Youtube size={16} />
                 YouTube
               </a>
+              <a
+                className="author-link"
+                href="https://xhslink.com/m/71DmCX2c4vp"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow on Xiaohongshu"
+              >
+                <Book size={16} />
+                rednote
+              </a>
+              <a
+                className="author-link"
+                href="https://space.bilibili.com/7014948"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow on bilibili"
+              >
+                <Tv size={16} />
+                bilibili
+              </a>
             </div>
           </div>
         </div>
@@ -1323,6 +1425,108 @@ function App() {
           onToggleDraggable={toggleDraggable}
         />
       )}
+
+      <section className="share-card" aria-labelledby="share-card-title">
+        <div className="share-card-header">
+          <div className="share-card-icon" aria-hidden="true">
+            <Share2 size={20} />
+          </div>
+          <div>
+            <h2 id="share-card-title">Share This Tool</h2>
+            <p>
+              Help others discover this interactive map and globe experience.
+            </p>
+          </div>
+        </div>
+
+        <div className="share-group">
+          <label className="share-label" htmlFor="share-link-input">
+            Copy Link
+          </label>
+          <div className="share-copy-row">
+            <input
+              id="share-link-input"
+              className="share-link-input"
+              type="text"
+              value={shareUrl}
+              readOnly
+            />
+            <button
+              type="button"
+              className="share-copy-button"
+              onClick={handleCopyShareLink}
+            >
+              {copyStatus === 'copied' ? <Check size={16} /> : <Copy size={16} />}
+              {copyStatus === 'copied'
+                ? 'Copied'
+                : copyStatus === 'failed'
+                  ? 'Retry'
+                  : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        <div className="share-group">
+          <div className="share-label">Share on Social Media</div>
+          <div className="share-options-grid">
+            <a
+              className="share-option"
+              href={shareLinks.x}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Twitter size={18} />
+              X
+            </a>
+            <a
+              className="share-option"
+              href={shareLinks.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Facebook size={18} />
+              Facebook
+            </a>
+            <a
+              className="share-option"
+              href={shareLinks.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Linkedin size={18} />
+              LinkedIn
+            </a>
+            <a
+              className="share-option"
+              href={shareLinks.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={18} />
+              WhatsApp
+            </a>
+          </div>
+          <a className="share-option share-option-email" href={shareLinks.email}>
+            <Mail size={18} />
+            Share via Email
+          </a>
+        </div>
+
+        <div className="share-divider" />
+
+        <button
+          type="button"
+          className="share-more-button"
+          onClick={handleNativeShare}
+        >
+          <Share2 size={16} />
+          More Share Options
+        </button>
+
+        <p className="share-hashtags">
+          Suggested hashtags: #TrueSizeMap #Geography #Cartography #Learning
+        </p>
+      </section>
 
       <footer className="app-footer">
         <p>

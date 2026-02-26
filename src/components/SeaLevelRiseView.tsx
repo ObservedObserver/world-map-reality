@@ -230,7 +230,7 @@ const SeaLevelRiseView = () => {
         <div className="sea-level-header">
           <h2>Sea Level Rise Simulator</h2>
           <p>
-            MapLibre GL + open data DEM. Areas below the selected sea level are
+            Interactive Sea Level Rise Simulator online. MapLibre GL + open data DEM. Areas below the selected sea level are
             highlighted in blue.
           </p>
         </div>

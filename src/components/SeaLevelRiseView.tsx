@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Download } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -10,6 +11,8 @@ const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
 const SATELLITE_SOURCE_ID = 'satellite-source'
 const TERRAIN_SOURCE_ID = 'terrain-source'
 const SATELLITE_LAYER_ID = 'satellite-layer'
+const WATERMARK_TEXT =
+  'runcell.dev/tool/true-size-map/sea-level-rise-simulator'
 
 const PRESET_LEVELS = [0, 2, 10, 30, 70]
 const GLOBE_PITCH_DEGREES = 30
@@ -115,6 +118,10 @@ const SeaLevelRiseView = () => {
     useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false)
+  const [exportPreviewUrl, setExportPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -158,6 +165,9 @@ const SeaLevelRiseView = () => {
       pitch: 0,
       bearing: 0,
       attributionControl: false,
+      canvasContextAttributes: {
+        preserveDrawingBuffer: true,
+      },
     })
     mapRef.current = map
     setMapReady(false)
@@ -224,6 +234,132 @@ const SeaLevelRiseView = () => {
     )
   }, [mapReady, seaLevel])
 
+  const createExportImage = useCallback(async () => {
+    const map = mapRef.current
+    if (!mapReady || !map) {
+      return null
+    }
+
+    await new Promise<void>((resolve) => {
+      let done = false
+      const finish = () => {
+        if (done) {
+          return
+        }
+        done = true
+        resolve()
+      }
+      map.once('render', finish)
+      map.triggerRepaint()
+      window.setTimeout(finish, 280)
+    })
+
+    const mapCanvas = map.getCanvas()
+    if (!mapCanvas.width || !mapCanvas.height) {
+      return null
+    }
+
+    const exportCanvas = document.createElement('canvas')
+    exportCanvas.width = mapCanvas.width
+    exportCanvas.height = mapCanvas.height
+    const context = exportCanvas.getContext('2d')
+    if (!context) {
+      return null
+    }
+
+    context.drawImage(mapCanvas, 0, 0)
+
+    const fontSize = Math.max(14, Math.round(exportCanvas.width * 0.018))
+    const marginBottom = Math.max(18, Math.round(exportCanvas.height * 0.03))
+    const paddingX = Math.max(16, Math.round(fontSize * 0.8))
+    const paddingY = Math.max(8, Math.round(fontSize * 0.5))
+    context.font = `${fontSize}px "IBM Plex Sans", "Segoe UI", sans-serif`
+    const textWidth = Math.ceil(context.measureText(WATERMARK_TEXT).width)
+    const boxWidth = textWidth + paddingX * 2
+    const boxHeight = fontSize + paddingY * 2
+    const boxX = (exportCanvas.width - boxWidth) / 2
+    const boxY = exportCanvas.height - boxHeight - marginBottom
+
+    context.fillStyle = 'rgba(6, 14, 26, 0.58)'
+    context.fillRect(boxX, boxY, boxWidth, boxHeight)
+    context.strokeStyle = 'rgba(248, 245, 239, 0.35)'
+    context.lineWidth = 1
+    context.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth - 1, boxHeight - 1)
+
+    context.fillStyle = 'rgba(248, 245, 239, 0.9)'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(
+      WATERMARK_TEXT,
+      exportCanvas.width / 2,
+      boxY + boxHeight / 2
+    )
+
+    return exportCanvas.toDataURL('image/png')
+  }, [mapReady])
+
+  const generatePreview = useCallback(async () => {
+    setPreviewLoading(true)
+    setExportError(null)
+    try {
+      const dataUrl = await createExportImage()
+      if (!dataUrl) {
+        setExportPreviewUrl(null)
+        setExportError('Unable to generate image preview right now.')
+        return
+      }
+      setExportPreviewUrl(dataUrl)
+    } catch {
+      setExportPreviewUrl(null)
+      setExportError(
+        'Image export failed. Please try again after the map finishes rendering.'
+      )
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [createExportImage])
+
+  const handleOpenDownloadModal = useCallback(() => {
+    setDownloadModalOpen(true)
+    setExportPreviewUrl(null)
+    setExportError(null)
+    void generatePreview()
+  }, [generatePreview])
+
+  const handleCloseDownloadModal = useCallback(() => {
+    setDownloadModalOpen(false)
+    setExportPreviewUrl(null)
+    setPreviewLoading(false)
+    setExportError(null)
+  }, [])
+
+  const handleDownload = useCallback(() => {
+    if (!exportPreviewUrl) {
+      return
+    }
+    const levelTag =
+      seaLevel >= 0 ? `${seaLevel}m` : `minus-${Math.abs(seaLevel)}m`
+    const link = document.createElement('a')
+    link.download = `sea-level-${mapViewMode}-${levelTag}.png`
+    link.href = exportPreviewUrl
+    link.click()
+  }, [exportPreviewUrl, mapViewMode, seaLevel])
+
+  useEffect(() => {
+    if (!downloadModalOpen) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseDownloadModal()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [downloadModalOpen, handleCloseDownloadModal])
+
   return (
     <main className="sea-level-layout">
       <section className="sea-level-panel">
@@ -276,20 +412,33 @@ const SeaLevelRiseView = () => {
             disabled={!mapReady}
             onChange={(event) => setSeaLevel(Number(event.target.value))}
           />
-          <div className="sea-level-presets">
-            {PRESET_LEVELS.map((level) => (
+          <div className="sea-level-presets-row">
+            <div className="sea-level-presets">
+              {PRESET_LEVELS.map((level) => (
+                <button
+                  key={`preset-${level}`}
+                  type="button"
+                  className={`sea-level-preset ${
+                    seaLevel === level ? 'is-active' : ''
+                  }`}
+                  disabled={!mapReady}
+                  onClick={() => setSeaLevel(level)}
+                >
+                  +{level}m
+                </button>
+              ))}
+            </div>
+            <div className="sea-level-actions">
               <button
-                key={`preset-${level}`}
                 type="button"
-                className={`sea-level-preset ${
-                  seaLevel === level ? 'is-active' : ''
-                }`}
-                disabled={!mapReady}
-                onClick={() => setSeaLevel(level)}
+                className="github-button button-with-icon"
+                onClick={handleOpenDownloadModal}
+                disabled={!mapReady || Boolean(mapError)}
               >
-                +{level}m
+                <Download size={15} aria-hidden="true" />
+                Export image
               </button>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -323,6 +472,53 @@ const SeaLevelRiseView = () => {
           </ul>
         </details>
       </section>
+      {downloadModalOpen && (
+        <div className="download-modal" role="dialog" aria-modal="true">
+          <div
+            className="download-backdrop"
+            onClick={handleCloseDownloadModal}
+            aria-hidden="true"
+          />
+          <div className="download-dialog sea-level-export-dialog" role="document">
+            <div className="download-header">
+              <div>
+                <div className="download-title">Export image</div>
+                <p className="download-subtitle">
+                  Preview includes current sea-level effect and watermark.
+                </p>
+              </div>
+            </div>
+            <div className="download-preview sea-level-export-preview">
+              {exportPreviewUrl ? (
+                <img src={exportPreviewUrl} alt="Sea level map export preview" />
+              ) : (
+                <div className="download-preview-placeholder">
+                  {previewLoading ? 'Generating preview...' : 'No preview'}
+                </div>
+              )}
+            </div>
+            {exportError && <p className="sea-level-export-error">{exportError}</p>}
+            <div className="sea-level-export-actions">
+              <button
+                type="button"
+                className="github-button button-with-icon"
+                onClick={handleDownload}
+                disabled={!exportPreviewUrl || previewLoading}
+              >
+                <Download size={15} aria-hidden="true" />
+                Download
+              </button>
+              <button
+                type="button"
+                className="reset-button"
+                onClick={handleCloseDownloadModal}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </main>
   )

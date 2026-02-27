@@ -571,6 +571,13 @@
   transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
 }
 
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .icon-button {
   width: 36px;
   height: 36px;
@@ -1486,6 +1493,21 @@
   gap: 8px;
 }
 
+.sea-level-presets-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sea-level-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
 .sea-level-preset {
   border: 1px solid rgba(248, 245, 239, 0.2);
   border-radius: 999px;
@@ -1561,6 +1583,36 @@
 
 .sea-level-disclaimer li strong {
   color: var(--mist);
+}
+
+.sea-level-export-dialog {
+  width: min(920px, 92vw);
+}
+
+.sea-level-export-preview {
+  min-height: 220px;
+  aspect-ratio: auto;
+}
+
+.sea-level-export-preview img {
+  object-fit: contain;
+}
+
+.sea-level-export-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 90, 95, 0.45);
+  background: rgba(48, 10, 18, 0.78);
+  color: #ffd3d6;
+  font-size: 0.86rem;
+}
+
+.sea-level-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .share-card {
@@ -1897,6 +1949,16 @@
 
   .sea-level-map {
     height: min(62vh, 500px);
+  }
+
+  .sea-level-export-actions {
+    justify-content: stretch;
+  }
+
+  .sea-level-export-actions .github-button,
+  .sea-level-export-actions .reset-button {
+    flex: 1 1 140px;
+    text-align: center;
   }
 }
 

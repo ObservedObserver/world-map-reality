@@ -6,6 +6,7 @@ import {
   Check,
   Copy,
   Facebook,
+  Github,
   Globe,
   Linkedin,
   Mail,
@@ -1301,6 +1302,16 @@ function App() {
               >
                 <Youtube size={16} />
                 YouTube
+              </a>
+              <a
+                className="author-link"
+                href="https://github.com/ObservedObserver"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow on GitHub"
+              >
+                <Github size={16} />
+                GitHub
               </a>
               {/* <a
                 className="author-link"

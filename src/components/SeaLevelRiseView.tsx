@@ -12,7 +12,7 @@ const TERRAIN_SOURCE_ID = 'terrain-source'
 const SATELLITE_LAYER_ID = 'satellite-layer'
 
 const PRESET_LEVELS = [0, 2, 10, 30, 70]
-const GLOBE_PITCH_DEGREES = 52
+const GLOBE_PITCH_DEGREES = 30
 const GLOBE_BEARING_DEGREES = -14
 const MODE_TRANSITION_MS = 650
 

@@ -71,6 +71,8 @@ import './App.css'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
+const SEA_LEVEL_SHORTS_EMBED_URL =
+  'https://www.youtube.com/embed/tMaH9cFs8XM'
 
 type ViewSelectionState = {
   selectedId: string | null
@@ -1431,7 +1433,10 @@ function App() {
         />
       )}
 
-      <section className="share-card" aria-labelledby="share-card-title">
+      <section
+        className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}
+        aria-labelledby="share-card-title"
+      >
         <div className="share-card-header">
           <div className="share-card-icon" aria-hidden="true">
             <Share2 size={20} />
@@ -1444,93 +1449,113 @@ function App() {
           </div>
         </div>
 
-        <div className="share-group">
-          <label className="share-label" htmlFor="share-link-input">
-            Copy Link
-          </label>
-          <div className="share-copy-row">
-            <input
-              id="share-link-input"
-              className="share-link-input"
-              type="text"
-              value={shareUrl}
-              readOnly
-            />
+        <div className="share-card-body">
+          <div className="share-card-main">
+            <div className="share-group">
+              <label className="share-label" htmlFor="share-link-input">
+                Copy Link
+              </label>
+              <div className="share-copy-row">
+                <input
+                  id="share-link-input"
+                  className="share-link-input"
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="share-copy-button"
+                  onClick={handleCopyShareLink}
+                >
+                  {copyStatus === 'copied' ? <Check size={16} /> : <Copy size={16} />}
+                  {copyStatus === 'copied'
+                    ? 'Copied'
+                    : copyStatus === 'failed'
+                      ? 'Retry'
+                      : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div className="share-group">
+              <div className="share-label">Share on Social Media</div>
+              <div className="share-options-grid">
+                <a
+                  className="share-option"
+                  href={shareLinks.x}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Twitter size={18} />
+                  X
+                </a>
+                <a
+                  className="share-option"
+                  href={shareLinks.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Facebook size={18} />
+                  Facebook
+                </a>
+                <a
+                  className="share-option"
+                  href={shareLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Linkedin size={18} />
+                  LinkedIn
+                </a>
+                <a
+                  className="share-option"
+                  href={shareLinks.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle size={18} />
+                  WhatsApp
+                </a>
+              </div>
+              <a className="share-option share-option-email" href={shareLinks.email}>
+                <Mail size={18} />
+                Share via Email
+              </a>
+            </div>
+
+            <div className="share-divider" />
+
             <button
               type="button"
-              className="share-copy-button"
-              onClick={handleCopyShareLink}
+              className="share-more-button"
+              onClick={handleNativeShare}
             >
-              {copyStatus === 'copied' ? <Check size={16} /> : <Copy size={16} />}
-              {copyStatus === 'copied'
-                ? 'Copied'
-                : copyStatus === 'failed'
-                  ? 'Retry'
-                  : 'Copy'}
+              <Share2 size={16} />
+              More Share Options
             </button>
+
+            <p className="share-hashtags">
+              Suggested hashtags: #TrueSizeMap #Geography #Cartography #Learning
+            </p>
           </div>
+
+          {isSeaLevelPage && (
+            <aside className="share-card-slot" aria-label="Sea level short video">
+              <div className="share-card-slot-label">Quick Demo</div>
+              <div className="share-card-video-frame">
+                <iframe
+                  src={SEA_LEVEL_SHORTS_EMBED_URL}
+                  title="Sea Level Simulator YouTube Short"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+            </aside>
+          )}
         </div>
-
-        <div className="share-group">
-          <div className="share-label">Share on Social Media</div>
-          <div className="share-options-grid">
-            <a
-              className="share-option"
-              href={shareLinks.x}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Twitter size={18} />
-              X
-            </a>
-            <a
-              className="share-option"
-              href={shareLinks.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Facebook size={18} />
-              Facebook
-            </a>
-            <a
-              className="share-option"
-              href={shareLinks.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Linkedin size={18} />
-              LinkedIn
-            </a>
-            <a
-              className="share-option"
-              href={shareLinks.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <MessageCircle size={18} />
-              WhatsApp
-            </a>
-          </div>
-          <a className="share-option share-option-email" href={shareLinks.email}>
-            <Mail size={18} />
-            Share via Email
-          </a>
-        </div>
-
-        <div className="share-divider" />
-
-        <button
-          type="button"
-          className="share-more-button"
-          onClick={handleNativeShare}
-        >
-          <Share2 size={16} />
-          More Share Options
-        </button>
-
-        <p className="share-hashtags">
-          Suggested hashtags: #TrueSizeMap #Geography #Cartography #Learning
-        </p>
       </section>
 
       <footer className="app-footer">

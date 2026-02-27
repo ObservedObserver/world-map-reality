@@ -3,7 +3,6 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
 import {
-  Book,
   Check,
   Copy,
   Facebook,
@@ -12,7 +11,6 @@ import {
   Mail,
   MessageCircle,
   Share2,
-  Tv,
   Twitter,
   Youtube,
 } from 'lucide-react'
@@ -70,7 +68,6 @@ import SeaLevelRiseView from './components/SeaLevelRiseView'
 import seoMeta from './seo-meta.json'
 import './App.css'
 
-const TRUE_SIZE_MAP_PATH = '/'
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
@@ -1220,17 +1217,17 @@ function App() {
       </Helmet>
       <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={TRUE_SIZE_MAP_PATH}
+        <a
+          className="page-tab page-tab-external"
+          href="https://www.runcell.dev"
+          target="_blank"
+          rel="noopener noreferrer"
           role="tab"
-          aria-selected={!isGlobePage && isTrueSizePage}
-          end
+          aria-selected="false"
+          aria-label="Runcell AI"
         >
-          Mercator map
-        </NavLink>
+          <span className="page-tab-text">Runcell AI</span>
+        </a>
         <NavLink
           className={({ isActive }) =>
             `page-tab ${isActive ? 'is-active' : ''}`
@@ -1238,10 +1235,16 @@ function App() {
           to={TRUE_SIZE_GLOBE_PATH}
           role="tab"
           aria-selected={isGlobePage}
+          aria-label="Size on other planets"
         >
-          <span className="view-tab-content">
-            <Globe size={16} aria-hidden="true" />
-            Size on other planets
+          <span className="view-tab-content page-tab-content">
+            <Globe className="page-tab-icon" size={16} aria-hidden="true" />
+            <span className="page-tab-text page-tab-text-desktop">
+              Size on other planets
+            </span>
+            <span className="page-tab-text page-tab-text-mobile">
+              Other planets
+            </span>
             <span className="view-tab-badge">new</span>
           </span>
         </NavLink>
@@ -1252,8 +1255,9 @@ function App() {
           to={CUSTOM_MERCATOR_PATH}
           role="tab"
           aria-selected={isEquatorLab}
+          aria-label="Equator lab"
         >
-          Equator lab
+          <span className="page-tab-text">Equator lab</span>
         </NavLink>
         <NavLink
           className={({ isActive }) =>
@@ -1262,8 +1266,9 @@ function App() {
           to={SEA_LEVEL_PATH}
           role="tab"
           aria-selected={isSeaLevelPage}
+          aria-label="Sea level map"
         >
-          Sea level rise
+          <span className="page-tab-text">Sea level map</span>
         </NavLink>
       </div>
 
@@ -1530,7 +1535,7 @@ function App() {
 
       <footer className="app-footer">
         <p>
-          Built by the creator of{' '}
+          Built with {' '}
           <a href="https://www.runcell.dev" target="_blank" rel="noopener noreferrer">
             runcell
           </a>

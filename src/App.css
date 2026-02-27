@@ -154,16 +154,21 @@
   background: transparent;
   color: var(--mist);
   padding: 10px 18px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 0.95rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.page-tab-text-mobile {
+  display: none;
 }
 
 .page-tab.is-active {
@@ -1813,10 +1818,6 @@
     padding: 20px 16px;
   }
 
-  .page-tabs {
-    flex-wrap: wrap;
-  }
-
   .header-copy h1 {
     font-size: 2.2rem;
   }
@@ -1837,5 +1838,68 @@
 
   .sea-level-map {
     height: min(62vh, 500px);
+  }
+}
+
+@media (max-width: 760px) {
+  .page-tabs {
+    width: 100%;
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    border-radius: 22px;
+    padding: 8px;
+  }
+
+  .page-tab {
+    width: 100%;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .page-tab .view-tab-content {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    column-gap: 6px;
+    row-gap: 4px;
+  }
+
+  .page-tab .view-tab-badge {
+    font-size: 0.56rem;
+    padding: 2px 5px;
+  }
+
+  .page-tab-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .page-tab-text-desktop {
+    display: none;
+  }
+
+  .page-tab-text-mobile {
+    display: inline;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .page-tab {
+    min-height: 46px;
+  }
+
+  .page-tab-icon {
+    display: none;
   }
 }

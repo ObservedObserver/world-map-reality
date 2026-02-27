@@ -1295,7 +1295,7 @@ function App() {
                 <Youtube size={16} />
                 YouTube
               </a>
-              <a
+              {/* <a
                 className="author-link"
                 href="https://xhslink.com/m/71DmCX2c4vp"
                 target="_blank"
@@ -1314,7 +1314,7 @@ function App() {
               >
                 <Tv size={16} />
                 bilibili
-              </a>
+              </a> */}
             </div>
           </div>
         </div>

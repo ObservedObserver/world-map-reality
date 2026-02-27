@@ -297,6 +297,31 @@ const SeaLevelRiseView = () => {
           <div ref={mapContainerRef} className="sea-level-map" />
           {mapError && <div className="sea-level-map-error">{mapError}</div>}
         </div>
+
+        <details className="sea-level-disclaimer">
+          <summary>About accuracy &amp; limitations</summary>
+          <ul>
+            <li>
+              <strong>Elevation-based only.</strong> This tool highlights all
+              areas below the selected elevation, not a true flood simulation.
+              Inland depressions (e.g. Lake Eyre, Death Valley) may appear
+              flooded even though no connected waterway exists from the ocean.
+            </li>
+            <li>
+              <strong>DEM resolution.</strong> The elevation data has limited
+              resolution (~30–90 m per pixel). Narrow waterways, channels, and
+              small islands may not be captured accurately — nearby pixels
+              average land and water, making some features appear at higher
+              elevations than they really are.
+            </li>
+            <li>
+              <strong>Not a scientific projection.</strong> Real-world flooding
+              depends on tides, storm surges, land subsidence, ice dynamics, and
+              drainage — none of which are modeled here. Use this as an
+              educational visualization, not a planning tool.
+            </li>
+          </ul>
+        </details>
       </section>
 
     </main>

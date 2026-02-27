@@ -1528,6 +1528,36 @@
   padding: 8px 10px;
 }
 
+.sea-level-disclaimer {
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.12);
+  background: rgba(8, 18, 34, 0.5);
+  font-size: 0.84rem;
+  color: var(--mist-strong);
+  line-height: 1.55;
+}
+
+.sea-level-disclaimer summary {
+  cursor: pointer;
+  color: var(--mist);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.sea-level-disclaimer ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sea-level-disclaimer li strong {
+  color: var(--mist);
+}
+
 .share-card {
   margin-top: 10px;
   width: min(100%, 920px);

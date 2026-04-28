@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { LineString } from 'geojson'
 import * as d3 from 'd3'
@@ -65,15 +73,44 @@ import {
 import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
-import SeaLevelRiseView from './components/SeaLevelRiseView'
+import SeoContent from './components/SeoContent'
+import { MAIN_FAQS } from './seo'
 import seoMeta from './seo-meta.json'
 import './App.css'
 
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
+const COMPARE_PATH_PREFIX = '/compare/'
 const SEA_LEVEL_SHORTS_EMBED_URL =
   'https://www.youtube.com/embed/tMaH9cFs8XM'
+const SeaLevelRiseView = lazy(() => import('./components/SeaLevelRiseView'))
+
+const SeaLevelLoading = () => (
+  <main className="sea-level-layout">
+    <section className="sea-level-panel">
+      <div className="panel-empty">Loading sea level simulator...</div>
+    </section>
+  </main>
+)
+
+const SeaLevelRoute = () => {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return <SeaLevelLoading />
+  }
+
+  return (
+    <Suspense fallback={<SeaLevelLoading />}>
+      <SeaLevelRiseView />
+    </Suspense>
+  )
+}
 
 type ViewSelectionState = {
   selectedId: string | null
@@ -277,15 +314,36 @@ function App() {
   const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
   const isGlobePage = location.pathname.startsWith(TRUE_SIZE_GLOBE_PATH)
   const isSeaLevelPage = location.pathname.startsWith(SEA_LEVEL_PATH)
+  const comparisonSlug = location.pathname.startsWith(COMPARE_PATH_PREFIX)
+    ? location.pathname.slice(COMPARE_PATH_PREFIX.length).split('/')[0]
+    : null
+  const comparisonMeta = useMemo(() => {
+    if (!comparisonSlug) {
+      return null
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(seoMeta.comparisons, comparisonSlug)
+    ) {
+      return seoMeta.comparisons[
+        comparisonSlug as keyof typeof seoMeta.comparisons
+      ]
+    }
+    return null
+  }, [comparisonSlug])
   const isTrueSizePage = !isEquatorLab && !isSeaLevelPage
   const activeView =
     isTrueSizePage && isGlobePage ? 'globe' : 'map'
   const isMapView = activeView === 'map'
+  const shouldRenderSeoContent = isTrueSizePage && isMapView
 
   const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
   const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
   const lastIsEquatorLabRef = useRef(isEquatorLab)
+  const appliedComparisonSlugRef = useRef<string | null>(null)
   const pageMeta = useMemo(() => {
+    if (comparisonMeta) {
+      return comparisonMeta
+    }
     if (isSeaLevelPage) {
       return seoMeta.pages.seaLevel
     }
@@ -296,8 +354,83 @@ function App() {
       return seoMeta.pages.globe
     }
     return seoMeta.pages.map
-  }, [isEquatorLab, isGlobePage, isSeaLevelPage])
+  }, [comparisonMeta, isEquatorLab, isGlobePage, isSeaLevelPage])
   const shareUrl = pageMeta.canonical
+  const structuredData = useMemo(() => {
+    const breadcrumbs = [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Runcell Tools',
+        item: 'https://www.runcell.dev/tool',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'True Size of Countries Map',
+        item: seoMeta.siteBaseUrl,
+      },
+    ]
+
+    if (comparisonMeta) {
+      breadcrumbs.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: `${comparisonMeta.primaryName} vs ${comparisonMeta.secondaryName}`,
+        item: comparisonMeta.canonical,
+      })
+    }
+
+    const graph: Array<Record<string, unknown>> = [
+      {
+        '@type': 'WebApplication',
+        '@id': `${pageMeta.canonical}#web-application`,
+        name: pageMeta.title,
+        url: pageMeta.canonical,
+        image: seoMeta.siteImageUrl,
+        applicationCategory: 'EducationalApplication',
+        operatingSystem: 'Any',
+        description: pageMeta.description,
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${pageMeta.canonical}#breadcrumb`,
+        itemListElement: breadcrumbs,
+      },
+    ]
+
+    if (shouldRenderSeoContent) {
+      const faqItems = comparisonMeta?.faq ?? MAIN_FAQS
+      graph.push({
+        '@type': 'FAQPage',
+        '@id': `${pageMeta.canonical}#faq`,
+        mainEntity: faqItems.map((item) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer,
+          },
+        })),
+      })
+    }
+
+    return {
+      '@context': 'https://schema.org',
+      '@graph': graph,
+    }
+  }, [
+    comparisonMeta,
+    pageMeta.canonical,
+    pageMeta.description,
+    pageMeta.title,
+    shouldRenderSeoContent,
+  ])
   const shareLinks = useMemo(() => {
     const encodedUrl = encodeURIComponent(shareUrl)
     const encodedTitle = encodeURIComponent(pageMeta.title)
@@ -356,25 +489,31 @@ function App() {
     window.open(shareLinks.x, '_blank', 'noopener,noreferrer')
   }, [pageMeta.description, pageMeta.title, shareLinks.x, shareUrl])
 
-  const headerEyebrow = isSeaLevelPage
+  const headerEyebrow = comparisonMeta
+    ? comparisonMeta.eyebrow
+    : isSeaLevelPage
     ? 'Sea Level Rise Simulator'
     : isTrueSizePage
       ? isMapView
-        ? 'Mercator True Size Playground'
+        ? 'True Size Map'
         : 'True Size Globe'
       : 'Experimental Projection Lab'
-  const headerTitle = isSeaLevelPage
+  const headerTitle = comparisonMeta
+    ? comparisonMeta.h1
+    : isSeaLevelPage
     ? 'Simulate Coastlines After Sea Level Rise'
     : isTrueSizePage
       ? isMapView
-        ? 'The True Size of Countries (Mercator Map)'
+        ? 'True Size of Countries Map'
         : 'Countries on a True Globe'
       : 'Redefine the Equator'
-  const headerDescription = isSeaLevelPage
+  const headerDescription = comparisonMeta
+    ? comparisonMeta.intro
+    : isSeaLevelPage
     ? 'Blend satellite imagery with terrain elevation and preview regions that fall below a custom sea-level threshold.'
     : isTrueSizePage
       ? isMapView
-        ? 'Mercator inflates shapes near the poles. Drag a country to a new latitude and it resizes as if it belonged there.'
+        ? 'Drag countries on a Mercator world map to compare their real size and see how latitude changes apparent scale.'
         : 'Spin the orthographic globe to compare countries at their real scale.'
       : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'
 
@@ -421,6 +560,11 @@ function App() {
     return () => window.clearTimeout(timeoutId)
   }, [copyStatus])
 
+  const comparisonCountryIds = useMemo(
+    () => comparisonMeta?.countryIds ?? [],
+    [comparisonMeta]
+  )
+
   useEffect(() => {
     if (loading) {
       return
@@ -443,6 +587,26 @@ function App() {
       return
     }
 
+    if (comparisonCountryIds.length > 0) {
+      const availableIds = new Set(countries.map((country) => country.id))
+      const availableComparisonIds = comparisonCountryIds.filter((id) =>
+        availableIds.has(id)
+      )
+      if (
+        comparisonSlug &&
+        appliedComparisonSlugRef.current !== comparisonSlug &&
+        availableComparisonIds.length > 0
+      ) {
+        setDraggableIds(availableComparisonIds)
+        setSelectedId(availableComparisonIds[0])
+        setCountryFilter('')
+        appliedComparisonSlugRef.current = comparisonSlug
+      }
+      return
+    }
+
+    appliedComparisonSlugRef.current = null
+
     if (!selectedId && initialSelection.selectedId) {
       setSelectedId(initialSelection.selectedId)
     }
@@ -453,6 +617,9 @@ function App() {
     loading,
     isEquatorLab,
     antarcticaId,
+    comparisonCountryIds,
+    comparisonSlug,
+    countries,
     initialSelection,
     selectedId,
     draggableIds,
@@ -625,7 +792,7 @@ function App() {
         globeCentroid: country.originalCentroid,
       }))
     )
-  }, [])
+  }, [setCountries])
 
   const handlePlanetZoomIn = useCallback(() => {
     setPlanetZoom((prev) => Math.min(PLANET_ZOOM_MAX, prev + PLANET_ZOOM_STEP))
@@ -1217,6 +1384,9 @@ function App() {
         <meta name="twitter:title" content={pageMeta.title} />
         <meta name="twitter:description" content={pageMeta.description} />
         <meta name="twitter:image" content={seoMeta.siteImageUrl} />
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
       </Helmet>
       <div className="app">
       <div className="page-tabs" role="tablist" aria-label="Experience views">
@@ -1340,7 +1510,7 @@ function App() {
 
 
       {isSeaLevelPage ? (
-        <SeaLevelRiseView />
+        <SeaLevelRoute />
       ) : isTrueSizePage ? (
         isMapView ? (
           <MapView
@@ -1443,6 +1613,8 @@ function App() {
           onToggleDraggable={toggleDraggable}
         />
       )}
+
+      {shouldRenderSeoContent && <SeoContent comparison={comparisonMeta} />}
 
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}

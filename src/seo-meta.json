@@ -5,12 +5,20 @@
     "/": "map",
     "/country-size-on-planets": "globe",
     "/custom-mercator-projection": "equator",
-    "/sea-level-rise-simulator": "seaLevel"
+    "/sea-level-rise-simulator": "seaLevel",
+    "/compare/greenland-vs-africa": "compare:greenland-vs-africa",
+    "/compare/russia-vs-united-states": "compare:russia-vs-united-states",
+    "/compare/canada-vs-united-states": "compare:canada-vs-united-states",
+    "/compare/australia-vs-greenland": "compare:australia-vs-greenland",
+    "/compare/india-vs-united-states": "compare:india-vs-united-states",
+    "/compare/brazil-vs-united-states": "compare:brazil-vs-united-states",
+    "/compare/russia-vs-canada": "compare:russia-vs-canada",
+    "/compare/japan-vs-united-states": "compare:japan-vs-united-states"
   },
   "pages": {
     "map": {
-      "title": "True Size of Countries — Mercator Map Playground",
-      "description": "Drag countries on a Mercator world map to see how latitude changes their true scale in real time.",
+      "title": "True Size of Countries Map: Compare Real Country Sizes",
+      "description": "Drag countries on an interactive world map to compare their real size. See how Mercator projection distorts Greenland, Africa, Russia, the USA, and more.",
       "canonical": "https://www.runcell.dev/tool/true-size-map"
     },
     "globe": {
@@ -27,6 +35,208 @@
       "title": "Sea Level Rise Interactive Map",
       "description": "Simulate sea level rise on a satellite world map or 3d globe map, online simulator for sea level rise.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator"
+    }
+  },
+  "comparisons": {
+    "greenland-vs-africa": {
+      "title": "Greenland vs Africa: True Size Map Comparison",
+      "description": "Compare the true size of Greenland and Africa on an interactive map and see why Mercator maps make Greenland look much larger than it is.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/greenland-vs-africa",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Greenland vs Africa: True Size Comparison",
+      "intro": "Greenland often looks close to Africa on a Mercator world map, but Africa is far larger in real area. Drag Greenland on the map to see how latitude changes its apparent scale.",
+      "primaryName": "Greenland",
+      "primaryAreaKm2": 2166086,
+      "secondaryName": "Africa",
+      "secondaryAreaKm2": 30370000,
+      "secondaryType": "continent",
+      "countryIds": ["304"],
+      "takeaway": "Africa is roughly 14 times larger than Greenland by land area, even though Mercator projection makes Greenland look enormous near the Arctic.",
+      "faq": [
+        {
+          "question": "Is Greenland really almost as large as Africa?",
+          "answer": "No. Greenland is about 2.17 million square kilometers, while Africa is about 30.37 million square kilometers."
+        },
+        {
+          "question": "Why does Greenland look so big on many maps?",
+          "answer": "Mercator projection stretches areas near the poles, so high-latitude places like Greenland appear much larger than their true area."
+        }
+      ]
+    },
+    "russia-vs-united-states": {
+      "title": "Russia vs United States: True Size Map Comparison",
+      "description": "Compare the true size of Russia and the United States on an interactive world map and see how latitude affects their apparent size.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/russia-vs-united-states",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Russia vs United States: True Size Comparison",
+      "intro": "Russia spans far northern latitudes, so Mercator maps exaggerate parts of it. Compare Russia with the United States at true geographic scale.",
+      "primaryName": "Russia",
+      "primaryAreaKm2": 17098246,
+      "secondaryName": "United States",
+      "secondaryAreaKm2": 9833520,
+      "secondaryType": "country",
+      "countryIds": ["643", "840"],
+      "takeaway": "Russia is about 1.7 times the area of the United States, but Mercator projection can make the visual difference look even larger.",
+      "faq": [
+        {
+          "question": "How much larger is Russia than the United States?",
+          "answer": "Russia is about 17.1 million square kilometers, compared with about 9.8 million square kilometers for the United States."
+        },
+        {
+          "question": "Does Mercator projection exaggerate Russia?",
+          "answer": "Yes. Because much of Russia is far north, Mercator projection stretches its apparent area on flat world maps."
+        }
+      ]
+    },
+    "canada-vs-united-states": {
+      "title": "Canada vs United States: True Size Map Comparison",
+      "description": "Compare Canada and the United States at true scale and see how Mercator projection changes their apparent size.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/canada-vs-united-states",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Canada vs United States: True Size Comparison",
+      "intro": "Canada and the United States are close in total area, but Canada appears more inflated on Mercator maps because it reaches farther north.",
+      "primaryName": "Canada",
+      "primaryAreaKm2": 9984670,
+      "secondaryName": "United States",
+      "secondaryAreaKm2": 9833520,
+      "secondaryType": "country",
+      "countryIds": ["124", "840"],
+      "takeaway": "Canada is only slightly larger than the United States by total area, but Mercator projection makes northern Canada look much bigger.",
+      "faq": [
+        {
+          "question": "Is Canada much larger than the United States?",
+          "answer": "No. Canada is about 9.98 million square kilometers and the United States is about 9.83 million square kilometers."
+        },
+        {
+          "question": "Why does Canada look so large on world maps?",
+          "answer": "Canada extends into high northern latitudes, where Mercator projection stretches land area."
+        }
+      ]
+    },
+    "australia-vs-greenland": {
+      "title": "Australia vs Greenland: True Size Map Comparison",
+      "description": "Compare Australia and Greenland on a true size map and see why Greenland looks misleadingly large on Mercator maps.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/australia-vs-greenland",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Australia vs Greenland: True Size Comparison",
+      "intro": "Australia is far larger than Greenland, even though Greenland can look comparable on a Mercator world map.",
+      "primaryName": "Australia",
+      "primaryAreaKm2": 7692024,
+      "secondaryName": "Greenland",
+      "secondaryAreaKm2": 2166086,
+      "secondaryType": "country",
+      "countryIds": ["36", "304"],
+      "takeaway": "Australia is about 3.6 times larger than Greenland by area. Greenland looks oversized on Mercator maps because it sits near the pole.",
+      "faq": [
+        {
+          "question": "Is Australia larger than Greenland?",
+          "answer": "Yes. Australia is about 7.69 million square kilometers, while Greenland is about 2.17 million square kilometers."
+        },
+        {
+          "question": "Why do Australia and Greenland look similar on some maps?",
+          "answer": "Mercator projection preserves local shape but inflates high-latitude places like Greenland."
+        }
+      ]
+    },
+    "india-vs-united-states": {
+      "title": "India vs United States: True Size Map Comparison",
+      "description": "Compare India and the United States at true scale on an interactive world map.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/india-vs-united-states",
+      "eyebrow": "Country Size Comparison",
+      "h1": "India vs United States: True Size Comparison",
+      "intro": "Drag India or the United States across the map to compare their true area and see how latitude changes apparent scale.",
+      "primaryName": "India",
+      "primaryAreaKm2": 3287263,
+      "secondaryName": "United States",
+      "secondaryAreaKm2": 9833520,
+      "secondaryType": "country",
+      "countryIds": ["356", "840"],
+      "takeaway": "The United States is about three times the area of India, but apparent size still changes as each country moves north or south on a Mercator map.",
+      "faq": [
+        {
+          "question": "How large is India compared with the United States?",
+          "answer": "India is about 3.29 million square kilometers, while the United States is about 9.83 million square kilometers."
+        },
+        {
+          "question": "Does India get distorted much on Mercator maps?",
+          "answer": "India is closer to the tropics than many northern countries, so its Mercator distortion is smaller than places near the poles."
+        }
+      ]
+    },
+    "brazil-vs-united-states": {
+      "title": "Brazil vs United States: True Size Map Comparison",
+      "description": "Compare Brazil and the United States at true scale on a draggable Mercator map.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/brazil-vs-united-states",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Brazil vs United States: True Size Comparison",
+      "intro": "Brazil and the United States are both continental-scale countries. Compare them at true size and see how their map scale changes with latitude.",
+      "primaryName": "Brazil",
+      "primaryAreaKm2": 8515767,
+      "secondaryName": "United States",
+      "secondaryAreaKm2": 9833520,
+      "secondaryType": "country",
+      "countryIds": ["76", "840"],
+      "takeaway": "The United States is somewhat larger than Brazil by total area, while Brazil's lower latitude means it is less exaggerated on Mercator maps.",
+      "faq": [
+        {
+          "question": "Is Brazil almost as large as the United States?",
+          "answer": "Yes. Brazil is about 8.52 million square kilometers, compared with about 9.83 million square kilometers for the United States."
+        },
+        {
+          "question": "Why does Brazil often look smaller than northern countries?",
+          "answer": "Mercator projection inflates high-latitude countries more than countries near the equator."
+        }
+      ]
+    },
+    "russia-vs-canada": {
+      "title": "Russia vs Canada: True Size Map Comparison",
+      "description": "Compare Russia and Canada on a true size map and see how Mercator projection affects both northern countries.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/russia-vs-canada",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Russia vs Canada: True Size Comparison",
+      "intro": "Russia and Canada both sit far north, so both are visually inflated on Mercator world maps. Compare their true areas on the interactive map.",
+      "primaryName": "Russia",
+      "primaryAreaKm2": 17098246,
+      "secondaryName": "Canada",
+      "secondaryAreaKm2": 9984670,
+      "secondaryType": "country",
+      "countryIds": ["643", "124"],
+      "takeaway": "Russia is about 1.7 times larger than Canada, and both countries are exaggerated by Mercator projection because of their northern latitude.",
+      "faq": [
+        {
+          "question": "Is Russia larger than Canada?",
+          "answer": "Yes. Russia is about 17.1 million square kilometers, while Canada is about 10.0 million square kilometers."
+        },
+        {
+          "question": "Are both Russia and Canada distorted on Mercator maps?",
+          "answer": "Yes. Both extend far north, where Mercator projection inflates apparent area."
+        }
+      ]
+    },
+    "japan-vs-united-states": {
+      "title": "Japan vs United States: True Size Map Comparison",
+      "description": "Compare Japan and the United States at true scale on an interactive Mercator map.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/compare/japan-vs-united-states",
+      "eyebrow": "Country Size Comparison",
+      "h1": "Japan vs United States: True Size Comparison",
+      "intro": "Use the true size map to compare Japan and the United States, then drag each country to see how latitude affects apparent map scale.",
+      "primaryName": "Japan",
+      "primaryAreaKm2": 377975,
+      "secondaryName": "United States",
+      "secondaryAreaKm2": 9833520,
+      "secondaryType": "country",
+      "countryIds": ["392", "840"],
+      "takeaway": "The United States is about 26 times the area of Japan. Moving countries across latitudes shows how Mercator distortion changes their displayed scale.",
+      "faq": [
+        {
+          "question": "How large is Japan compared with the United States?",
+          "answer": "Japan is about 378 thousand square kilometers, while the United States is about 9.83 million square kilometers."
+        },
+        {
+          "question": "Can I drag Japan on the map?",
+          "answer": "Yes. Select Japan in the comparison set and drag it to another latitude to see how its apparent Mercator scale changes."
+        }
+      ]
     }
   }
 }

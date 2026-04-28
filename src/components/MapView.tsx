@@ -70,7 +70,7 @@ const MapView = ({
   onCountryFilterChange,
   onToggleDraggable,
 }: MapViewProps) => (
-  <main className="layout">
+  <main className="layout" id="interactive-map">
     <section className="map-shell">
       <div className="map-header">
         <h2>Move the comparison set</h2>
@@ -316,6 +316,7 @@ const MapView = ({
         <iframe
           src="https://www.youtube.com/embed/vrRDZbrqYtI"
           title="YouTube video player"
+          loading="lazy"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           referrerPolicy="strict-origin-when-cross-origin"

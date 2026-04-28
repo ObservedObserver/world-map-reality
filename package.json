@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/prerender.mjs",
+    "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr --emptyOutDir true && node scripts/prerender.mjs",
     "build:spa": "tsc -b && vite build",
     "prerender": "node scripts/prerender.mjs",
     "build:ssg": "yarn build",

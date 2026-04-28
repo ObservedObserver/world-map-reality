@@ -533,6 +533,7 @@ const GlobeView = ({
         <iframe
           src="https://www.youtube.com/embed/IMfNAKvY3zY"
           title="YouTube video player"
+          loading="lazy"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           referrerPolicy="strict-origin-when-cross-origin"

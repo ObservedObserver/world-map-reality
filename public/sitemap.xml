@@ -1,15 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.runcell.dev/tool/true-size-map/</loc>
+    <loc>https://www.runcell.dev/tool/true-size-map</loc>
+    <lastmod>2026-04-28</lastmod>
   </url>
   <url>
     <loc>https://www.runcell.dev/tool/true-size-map/country-size-on-planets</loc>
+    <lastmod>2026-04-28</lastmod>
   </url>
   <url>
     <loc>https://www.runcell.dev/tool/true-size-map/custom-mercator-projection</loc>
+    <lastmod>2026-04-28</lastmod>
   </url>
   <url>
     <loc>https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/greenland-vs-africa</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/russia-vs-united-states</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/canada-vs-united-states</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/australia-vs-greenland</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/india-vs-united-states</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/brazil-vs-united-states</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/russia-vs-canada</loc>
+    <lastmod>2026-04-28</lastmod>
+  </url>
+  <url>
+    <loc>https://www.runcell.dev/tool/true-size-map/compare/japan-vs-united-states</loc>
+    <lastmod>2026-04-28</lastmod>
   </url>
 </urlset>

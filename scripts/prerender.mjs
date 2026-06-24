@@ -10,11 +10,13 @@ function toOutputFiles(route) {
   if (route === '/') {
     return [path.join(DIST_DIR, 'index.html')]
   }
+  // Emit only the directory-index form (dist/<route>/index.html). The clean URL
+  // `/<route>` resolves to it via Vercel's filesystem handler. We deliberately do
+  // NOT also write `dist/<route>.html`: that produced a second, directly
+  // addressable URL (`/<route>.html`) serving byte-identical content — a
+  // duplicate indexable URL outside the sitemap that wastes crawl budget.
   const normalized = route.replace(/^\/+/, '')
-  return [
-    path.join(DIST_DIR, normalized, 'index.html'),
-    path.join(DIST_DIR, `${normalized}.html`),
-  ]
+  return [path.join(DIST_DIR, normalized, 'index.html')]
 }
 
 function toRequestPath(route, basePath) {

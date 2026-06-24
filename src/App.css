@@ -2187,3 +2187,418 @@
     display: none;
   }
 }
+
+/* ============================================================
+   Asteroid Impact Simulator
+   ============================================================ */
+.asteroid-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.asteroid-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.asteroid-controls-card,
+.asteroid-results {
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 1px solid var(--mist-border);
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.9s ease 0.2s both;
+}
+
+.asteroid-controls-card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.asteroid-control,
+.asteroid-presets-group,
+.asteroid-location {
+  display: grid;
+  gap: 8px;
+}
+
+.asteroid-control-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(110, 231, 249, 0.85);
+  font-weight: 600;
+}
+
+.asteroid-control label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--mist);
+  font-size: 0.92rem;
+}
+
+.asteroid-control label strong {
+  font-family: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, monospace;
+  font-size: 1rem;
+  color: #f8f5ef;
+}
+
+.asteroid-control input[type='range'] {
+  width: 100%;
+  accent-color: #ff7a18;
+}
+
+.asteroid-presets,
+.asteroid-composition,
+.asteroid-location-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asteroid-preset,
+.asteroid-composition-button,
+.asteroid-city {
+  border: 1px solid rgba(248, 245, 239, 0.2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(12, 26, 48, 0.7);
+  color: var(--mist);
+  cursor: pointer;
+  font-size: 0.86rem;
+  transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.asteroid-preset:hover,
+.asteroid-composition-button:hover,
+.asteroid-city:hover {
+  border-color: rgba(110, 231, 249, 0.5);
+  color: #dffaff;
+}
+
+.asteroid-preset.is-active,
+.asteroid-composition-button.is-active,
+.asteroid-city.is-active {
+  background: rgba(110, 231, 249, 0.18);
+  border-color: rgba(110, 231, 249, 0.7);
+  color: #dffaff;
+}
+
+.asteroid-city-locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asteroid-city:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.asteroid-export-button {
+  justify-self: start;
+}
+
+.asteroid-map-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(248, 245, 239, 0.18);
+  background: rgba(7, 15, 28, 0.7);
+  min-height: 320px;
+}
+
+.asteroid-map {
+  width: 100%;
+  height: min(70vh, 620px);
+}
+
+.asteroid-map-hint {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 231, 249, 0.32);
+  background: rgba(8, 14, 26, 0.72);
+  color: rgba(223, 250, 255, 0.92);
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+
+.asteroid-map-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 90, 95, 0.45);
+  background: rgba(48, 10, 18, 0.78);
+  color: #ffd3d6;
+  font-size: 0.86rem;
+  padding: 8px 10px;
+}
+
+.asteroid-impact-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ff7a18;
+  background: rgba(255, 122, 24, 0.28);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 14px rgba(255, 122, 24, 0.85);
+  cursor: grab;
+  position: relative;
+}
+
+.asteroid-impact-marker::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 122, 24, 0.6);
+  animation: asteroidPulse 2.2s ease-out infinite;
+}
+
+.asteroid-impact-marker::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+@keyframes asteroidPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.asteroid-results {
+  display: grid;
+  gap: 16px;
+}
+
+.asteroid-headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.asteroid-headline-energy {
+  display: grid;
+  gap: 2px;
+}
+
+.asteroid-stat-kicker {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mist-strong);
+}
+
+.asteroid-headline-energy strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  line-height: 1.05;
+  color: #ffb066;
+}
+
+.asteroid-headline-sub {
+  font-size: 0.9rem;
+  color: var(--mist);
+}
+
+.asteroid-outcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.asteroid-outcome-badge.crater {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #ffc7c2;
+}
+
+.asteroid-outcome-badge.airburst {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #ffe6a6;
+}
+
+.asteroid-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.asteroid-stat {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 245, 239, 0.14);
+  background: rgba(8, 18, 34, 0.55);
+}
+
+.asteroid-stat-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mist-strong);
+}
+
+.asteroid-stat strong {
+  font-family: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, monospace;
+  font-size: 1.1rem;
+  color: #f8f5ef;
+}
+
+.asteroid-summary {
+  margin: 0;
+  color: var(--mist);
+  line-height: 1.6;
+  max-width: 75ch;
+}
+
+.asteroid-legend {
+  display: grid;
+  gap: 8px;
+}
+
+.asteroid-legend-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--mist);
+}
+
+.asteroid-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.asteroid-legend-radius {
+  font-family: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, monospace;
+  color: #dffaff;
+}
+
+.asteroid-legend-empty {
+  margin: 0;
+  color: var(--mist-strong);
+  font-size: 0.88rem;
+}
+
+.asteroid-population {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(110, 231, 249, 0.22);
+  background: rgba(8, 22, 34, 0.5);
+}
+
+.asteroid-population p {
+  margin: 0;
+  color: var(--mist);
+  line-height: 1.55;
+}
+
+.asteroid-population strong {
+  color: #ffb066;
+}
+
+.asteroid-density-select {
+  border-radius: 8px;
+  border: 1px solid rgba(110, 231, 249, 0.4);
+  background: rgba(7, 15, 28, 0.8);
+  color: #dffaff;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+}
+
+.asteroid-population-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--mist-strong);
+}
+
+.asteroid-methodology {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.12);
+  background: rgba(8, 18, 34, 0.5);
+  font-size: 0.84rem;
+  color: var(--mist-strong);
+  line-height: 1.55;
+}
+
+.asteroid-methodology summary {
+  cursor: pointer;
+  color: var(--mist);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.asteroid-methodology ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asteroid-methodology li strong {
+  color: var(--mist);
+}
+
+.sea-level-related {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--mist-strong);
+}
+
+.sea-level-related a {
+  color: rgba(110, 231, 249, 0.92);
+}
+
+@media (min-width: 900px) {
+  .asteroid-stage {
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  }
+
+  .asteroid-controls-card {
+    position: sticky;
+    top: 16px;
+  }
+}

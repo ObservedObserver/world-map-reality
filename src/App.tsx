@@ -75,6 +75,8 @@ import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
 import SeoContent from './components/SeoContent'
 import SeaLevelSeoContent from './components/SeaLevelSeoContent'
+import GlobeSeoContent from './components/GlobeSeoContent'
+import EquatorSeoContent from './components/EquatorSeoContent'
 import MapErrorBoundary from './components/MapErrorBoundary'
 import { MAIN_FAQS } from './seo'
 import seoMeta from './seo-meta.json'
@@ -104,6 +106,15 @@ const SeaLevelUnavailable = () => (
         WebGL). The guide below explains how the sea level rise simulator works.
       </div>
     </section>
+  </main>
+)
+
+const ToolViewUnavailable = ({ name }: { name: string }) => (
+  <main style={{ maxWidth: 640, margin: '0 auto', padding: '64px 24px' }}>
+    <p className="panel-empty">
+      The interactive {name} could not load in this browser (it may require
+      WebGL). The guide below explains how it works.
+    </p>
   </main>
 )
 
@@ -1523,7 +1534,7 @@ function App() {
 
 
       {isSeaLevelPage ? (
-        <MapErrorBoundary fallback={<SeaLevelUnavailable />}>
+        <MapErrorBoundary key="sea-level" fallback={<SeaLevelUnavailable />}>
           <SeaLevelRoute />
         </MapErrorBoundary>
       ) : isTrueSizePage ? (
@@ -1554,6 +1565,7 @@ function App() {
             onToggleDraggable={toggleDraggable}
           />
         ) : (
+          <MapErrorBoundary key="globe" fallback={<ToolViewUnavailable name="globe" />}>
           <GlobeView
             loading={loading}
             error={error}
@@ -1611,8 +1623,10 @@ function App() {
             formatLongitude={formatLongitude}
             formatPlanetRatio={formatPlanetRatio}
           />
+          </MapErrorBoundary>
         )
       ) : (
+        <MapErrorBoundary key="projection-lab" fallback={<ToolViewUnavailable name="projection lab" />}>
         <EquatorShiftView
           loading={loading}
           error={error}
@@ -1627,10 +1641,13 @@ function App() {
           onCountryFilterChange={setCountryFilter}
           onToggleDraggable={toggleDraggable}
         />
+        </MapErrorBoundary>
       )}
 
       {shouldRenderSeoContent && <SeoContent comparison={comparisonMeta} />}
       {isSeaLevelPage && <SeaLevelSeoContent />}
+      {isTrueSizePage && !isMapView && <GlobeSeoContent />}
+      {isEquatorLab && <EquatorSeoContent />}
 
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}

@@ -2602,3 +2602,126 @@
     top: 16px;
   }
 }
+
+/* ============================================================
+   Nuclear Blast Radius Map — additions on top of the shared
+   .asteroid-* "map tool" styles reused by NuclearBlastView.
+   ============================================================ */
+.nuclear-ground-zero-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fde047;
+  background: rgba(253, 224, 71, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 14px rgba(253, 224, 71, 0.85);
+  cursor: grab;
+  position: relative;
+}
+
+.nuclear-ground-zero-marker::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(253, 224, 71, 0.65);
+  animation: nuclearPulse 2.2s ease-out infinite;
+}
+
+.nuclear-ground-zero-marker::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+@keyframes nuclearPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
+.nuclear-yield-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.nuclear-yield-field > label {
+  font-size: 0.78rem;
+  color: var(--mist-strong);
+}
+
+.nuclear-yield-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+}
+
+.nuclear-yield-input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(110, 231, 249, 0.32);
+  background: rgba(7, 15, 28, 0.82);
+  color: #f8f5ef;
+  font-family: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, monospace;
+  font-size: 0.95rem;
+  padding: 8px 10px;
+}
+
+.nuclear-yield-input:focus {
+  outline: none;
+  border-color: rgba(110, 231, 249, 0.72);
+}
+
+.nuclear-yield-unit {
+  font-size: 0.85rem;
+  color: var(--mist-strong);
+}
+
+.nuclear-burst-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 245, 239, 0.16);
+  background: rgba(8, 18, 34, 0.55);
+}
+
+.nuclear-burst-option {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--mist);
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.nuclear-burst-option:hover {
+  color: #dffaff;
+}
+
+.nuclear-burst-option.is-active {
+  background: rgba(110, 231, 249, 0.18);
+  border-color: rgba(110, 231, 249, 0.6);
+  color: #dffaff;
+}
+
+.nuclear-burst-note {
+  font-size: 0.8rem;
+  color: var(--mist-strong);
+  line-height: 1.45;
+}

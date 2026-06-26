@@ -54,6 +54,52 @@ export const SEA_LEVEL_FAQS: FaqItem[] = [
   },
 ]
 
+export const GLOBE_FAQS: FaqItem[] = [
+  {
+    question: 'Why compare country sizes on a globe instead of a flat map?',
+    answer:
+      'A globe shows land area without Mercator distortion, so high-latitude countries like Greenland and Russia stop looking oversized. An orthographic globe is the closest a screen gets to true relative area.',
+  },
+  {
+    question: 'How do countries compare to other planets and moons?',
+    answer:
+      'Dropping a country onto another world shows scale directly. The Moon has about 38 million km² of surface, roughly a quarter of Earth’s land area, while Mars has about 145 million km², close to all of Earth’s land combined.',
+  },
+  {
+    question: 'What is an orthographic globe projection?',
+    answer:
+      'It renders Earth as if viewed from deep space: the visible hemisphere keeps its round shape and near-true areas around the center, unlike a flat map that has to stretch the poles.',
+  },
+  {
+    question: 'Which countries look most distorted on flat world maps?',
+    answer:
+      'Greenland, Russia, Canada, and Antarctica are the most exaggerated, because Mercator stretching grows with distance from the equator.',
+  },
+]
+
+export const EQUATOR_FAQS: FaqItem[] = [
+  {
+    question: 'What is a custom Mercator projection?',
+    answer:
+      'It is a Mercator map where you choose where the line of least distortion sits. Moving that line shows how the same projection would stretch the world from a different center.',
+  },
+  {
+    question: 'Why does the Mercator projection distort country sizes?',
+    answer:
+      'Mercator preserves angles and shapes for navigation, but it cannot preserve area on a flat sheet. The scale factor grows toward the poles, so land far from the equator looks much larger than it is.',
+  },
+  {
+    question: 'What happens when you move the equator?',
+    answer:
+      'Countries near your chosen equator shrink toward their true scale, while countries far from it inflate. It makes the trade-off behind every flat map visible.',
+  },
+  {
+    question: 'Can any flat map avoid distortion entirely?',
+    answer:
+      'No. No flat map can keep area, shape, distance, and direction all correct at once. Every projection, including Mercator, sacrifices some properties to preserve others.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

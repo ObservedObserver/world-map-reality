@@ -74,6 +74,8 @@ import GlobeView from './components/GlobeView'
 import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
 import SeoContent from './components/SeoContent'
+import SeaLevelSeoContent from './components/SeaLevelSeoContent'
+import MapErrorBoundary from './components/MapErrorBoundary'
 import { MAIN_FAQS } from './seo'
 import seoMeta from './seo-meta.json'
 import './App.css'
@@ -90,6 +92,17 @@ const SeaLevelLoading = () => (
   <main className="sea-level-layout">
     <section className="sea-level-panel">
       <div className="panel-empty">Loading sea level simulator...</div>
+    </section>
+  </main>
+)
+
+const SeaLevelUnavailable = () => (
+  <main className="sea-level-layout">
+    <section className="sea-level-panel">
+      <div className="panel-empty">
+        The interactive sea level map could not load in this browser (it requires
+        WebGL). The guide below explains how the sea level rise simulator works.
+      </div>
     </section>
   </main>
 )
@@ -1510,7 +1523,9 @@ function App() {
 
 
       {isSeaLevelPage ? (
-        <SeaLevelRoute />
+        <MapErrorBoundary fallback={<SeaLevelUnavailable />}>
+          <SeaLevelRoute />
+        </MapErrorBoundary>
       ) : isTrueSizePage ? (
         isMapView ? (
           <MapView
@@ -1615,6 +1630,7 @@ function App() {
       )}
 
       {shouldRenderSeoContent && <SeoContent comparison={comparisonMeta} />}
+      {isSeaLevelPage && <SeaLevelSeoContent />}
 
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}

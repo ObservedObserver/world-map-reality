@@ -26,6 +26,34 @@ export const MAIN_FAQS: FaqItem[] = [
   },
 ]
 
+export const SEA_LEVEL_FAQS: FaqItem[] = [
+  {
+    question: 'What does this sea level rise simulator show?',
+    answer:
+      'It overlays a sea-level threshold you choose onto terrain elevation and highlights every area that sits below that level, so you can preview which coastlines and low-lying regions would be underwater at that height.',
+  },
+  {
+    question: 'How much has sea level risen, and how much more could it rise?',
+    answer:
+      'Global mean sea level has risen roughly 20 cm (about 8 inches) since 1900 and the rate is accelerating. Depending on future emissions, the IPCC projects roughly 0.3 to over 1 metre of rise by 2100, with several metres possible over later centuries if major ice sheets destabilize.',
+  },
+  {
+    question: 'Is this a real flood model?',
+    answer:
+      'No. It is an elevation-based "bathtub" visualization that shades all land below the chosen level. It does not model tides, storm surge, waves, drainage, or land subsidence, so it is best used as an educational illustration of exposure rather than a flood forecast.',
+  },
+  {
+    question: 'Why do some inland areas appear flooded?',
+    answer:
+      'The map shades any location below the selected elevation, so closed basins that already lie below sea level — such as the Caspian Depression or Death Valley — light up even though no ocean water actually connects to them.',
+  },
+  {
+    question: 'What elevation data does the map use?',
+    answer:
+      'It renders an open global digital elevation model with MapLibre GL. The resolution is limited to roughly tens of metres per pixel, so narrow channels, sea walls, and small islands may be averaged and shown approximately.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

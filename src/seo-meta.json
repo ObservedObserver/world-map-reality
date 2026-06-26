@@ -7,6 +7,7 @@
     "/custom-mercator-projection": "equator",
     "/sea-level-rise-simulator": "seaLevel",
     "/asteroid-impact-simulator": "asteroid",
+    "/nuclear-blast-radius-map": "nuclear",
     "/compare/greenland-vs-africa": "compare:greenland-vs-africa",
     "/compare/russia-vs-united-states": "compare:russia-vs-united-states",
     "/compare/canada-vs-united-states": "compare:canada-vs-united-states",
@@ -41,6 +42,11 @@
       "title": "Asteroid Impact Simulator: Crater, Blast & Thermal Zones",
       "description": "Simulate an asteroid impact anywhere on Earth. Set the size, speed, angle, and composition to map the crater, fireball, blast, and thermal zones.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/asteroid-impact-simulator"
+    },
+    "nuclear": {
+      "title": "Nuclear Blast Radius Map: Blast, Thermal & Radiation Zones",
+      "description": "Map the blast, thermal, and radiation rings of a nuclear bomb anywhere on Earth. Pick a target, choose a yield from Hiroshima to Tsar Bomba, and see the scale.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/nuclear-blast-radius-map"
     }
   },
   "comparisons": {

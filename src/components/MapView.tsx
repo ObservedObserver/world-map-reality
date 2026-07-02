@@ -6,6 +6,7 @@ import type {
   MapRenderedCountry,
   SelectedDetails,
 } from '../types'
+import MapStaticPreview from './MapStaticPreview'
 
 type MapLatLine = {
   lat: number
@@ -19,6 +20,7 @@ type MapLatLine = {
 type MapViewProps = {
   loading: boolean
   error: string | null
+  showStaticPreview?: boolean
   mapWidth: number
   mapHeight: number
   worldFeatures: CountryFeature[]
@@ -48,6 +50,7 @@ type MapViewProps = {
 const MapView = ({
   loading,
   error,
+  showStaticPreview = false,
   mapWidth,
   mapHeight,
   worldFeatures,
@@ -100,7 +103,12 @@ const MapView = ({
       </div>
 
       <div className="map-frame">
-        {loading && <div className="map-loading">Loading map...</div>}
+        {loading &&
+          (showStaticPreview ? (
+            <MapStaticPreview />
+          ) : (
+            <div className="map-loading">Loading map...</div>
+          ))}
         {error && <div className="map-error">{error}</div>}
         {!loading && !error && (
           <svg

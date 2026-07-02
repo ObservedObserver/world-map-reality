@@ -1061,6 +1061,56 @@
   box-shadow: 0 30px 80px rgba(6, 10, 22, 0.6);
 }
 
+.map-static-preview {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(16px, 4vw, 32px);
+  color: var(--mist);
+  background: rgba(6, 10, 22, 0.55);
+  z-index: 2;
+}
+
+.map-static-lead {
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.6;
+}
+
+.map-static-table {
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.map-static-table caption {
+  text-align: left;
+  margin-bottom: 8px;
+  color: var(--mist-strong);
+  font-size: 0.85rem;
+}
+
+.map-static-table th,
+.map-static-table td {
+  text-align: left;
+  padding: 6px 14px 6px 0;
+  border-bottom: 1px solid var(--mist-border);
+}
+
+.map-static-table th {
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.map-static-note {
+  margin: 0;
+  color: var(--mist-strong);
+  font-size: 0.9rem;
+}
+
 .map-loading,
 .map-error {
   position: absolute;

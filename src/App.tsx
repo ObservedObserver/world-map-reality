@@ -528,7 +528,7 @@ function App() {
     ? 'Simulate Coastlines After Sea Level Rise'
     : isTrueSizePage
       ? isMapView
-        ? 'True Size of Countries Map'
+        ? 'The True Size of Countries (Mercator Map)'
         : 'Countries on a True Globe'
       : 'Redefine the Equator'
   const headerDescription = comparisonMeta
@@ -537,7 +537,7 @@ function App() {
     ? 'Blend satellite imagery with terrain elevation and preview regions that fall below a custom sea-level threshold.'
     : isTrueSizePage
       ? isMapView
-        ? 'Drag countries on a Mercator world map to compare their real size and see how latitude changes apparent scale.'
+        ? 'Drag countries on a Mercator world map to see how latitude changes their true scale in real time.'
         : 'Spin the orthographic globe to compare countries at their real scale.'
       : 'Tilt the equator on the globe and see Mercator stretch the world in new directions.'
 
@@ -1542,6 +1542,7 @@ function App() {
           <MapView
             loading={loading}
             error={error}
+            showStaticPreview={!comparisonMeta}
             mapWidth={MAP_WIDTH}
             mapHeight={MAP_HEIGHT}
             worldFeatures={worldFeatures}

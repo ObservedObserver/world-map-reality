@@ -17,8 +17,8 @@
   },
   "pages": {
     "map": {
-      "title": "True Size of Countries Map: Compare Real Country Sizes",
-      "description": "Drag countries on an interactive world map to compare their real size. See how Mercator projection distorts Greenland, Africa, Russia, the USA, and more.",
+      "title": "True Size of Countries — Mercator Map Playground",
+      "description": "Drag countries on a Mercator world map to see how latitude changes their true scale in real time.",
       "canonical": "https://www.runcell.dev/tool/true-size-map"
     },
     "globe": {

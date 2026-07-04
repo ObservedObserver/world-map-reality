@@ -20,6 +20,7 @@ import {
   Linkedin,
   Mail,
   MessageCircle,
+  Radiation,
   Share2,
   Twitter,
   Youtube,
@@ -80,7 +81,8 @@ import GlobeSeoContent from './components/GlobeSeoContent'
 import EquatorSeoContent from './components/EquatorSeoContent'
 import MapErrorBoundary from './components/MapErrorBoundary'
 import AsteroidSeoContent from './components/AsteroidSeoContent'
-import { ASTEROID_FAQS, MAIN_FAQS } from './seo'
+import NuclearBlastSeoContent from './components/NuclearBlastSeoContent'
+import { ASTEROID_FAQS, MAIN_FAQS, NUCLEAR_FAQS } from './seo'
 import seoMeta from './seo-meta.json'
 import './App.css'
 
@@ -88,11 +90,13 @@ const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
 const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
 const ASTEROID_PATH = '/asteroid-impact-simulator'
+const NUCLEAR_PATH = '/nuclear-blast-radius-map'
 const COMPARE_PATH_PREFIX = '/compare/'
 const SEA_LEVEL_SHORTS_EMBED_URL =
   'https://www.youtube.com/embed/tMaH9cFs8XM'
 const SeaLevelRiseView = lazy(() => import('./components/SeaLevelRiseView'))
 const AsteroidImpactView = lazy(() => import('./components/AsteroidImpactView'))
+const NuclearBlastView = lazy(() => import('./components/NuclearBlastView'))
 
 const SeaLevelLoading = () => (
   <main className="sea-level-layout">
@@ -160,6 +164,30 @@ const AsteroidRoute = () => {
   return (
     <Suspense fallback={<AsteroidLoading />}>
       <AsteroidImpactView />
+    </Suspense>
+  )
+}
+
+const NuclearLoading = () => (
+  <main className="asteroid-layout">
+    <div className="panel-empty">Loading nuclear blast radius map...</div>
+  </main>
+)
+
+const NuclearRoute = () => {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return <NuclearLoading />
+  }
+
+  return (
+    <Suspense fallback={<NuclearLoading />}>
+      <NuclearBlastView />
     </Suspense>
   )
 }
@@ -367,6 +395,7 @@ function App() {
   const isGlobePage = location.pathname.startsWith(TRUE_SIZE_GLOBE_PATH)
   const isSeaLevelPage = location.pathname.startsWith(SEA_LEVEL_PATH)
   const isAsteroidPage = location.pathname.startsWith(ASTEROID_PATH)
+  const isNuclearPage = location.pathname.startsWith(NUCLEAR_PATH)
   const comparisonSlug = location.pathname.startsWith(COMPARE_PATH_PREFIX)
     ? location.pathname.slice(COMPARE_PATH_PREFIX.length).split('/')[0]
     : null
@@ -383,7 +412,8 @@ function App() {
     }
     return null
   }, [comparisonSlug])
-  const isTrueSizePage = !isEquatorLab && !isSeaLevelPage && !isAsteroidPage
+  const isTrueSizePage =
+    !isEquatorLab && !isSeaLevelPage && !isAsteroidPage && !isNuclearPage
   const activeView =
     isTrueSizePage && isGlobePage ? 'globe' : 'map'
   const isMapView = activeView === 'map'
@@ -396,6 +426,9 @@ function App() {
   const pageMeta = useMemo(() => {
     if (comparisonMeta) {
       return comparisonMeta
+    }
+    if (isNuclearPage) {
+      return seoMeta.pages.nuclear
     }
     if (isAsteroidPage) {
       return seoMeta.pages.asteroid
@@ -410,7 +443,7 @@ function App() {
       return seoMeta.pages.globe
     }
     return seoMeta.pages.map
-  }, [comparisonMeta, isAsteroidPage, isEquatorLab, isGlobePage, isSeaLevelPage])
+  }, [comparisonMeta, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isSeaLevelPage])
   const shareUrl = pageMeta.canonical
   const structuredData = useMemo(() => {
     const breadcrumbs = [
@@ -445,7 +478,7 @@ function App() {
         url: pageMeta.canonical,
         image: seoMeta.siteImageUrl,
         applicationCategory: 'EducationalApplication',
-        operatingSystem: isAsteroidPage ? 'All' : 'Any',
+        operatingSystem: isAsteroidPage || isNuclearPage ? 'All' : 'Any',
         description: pageMeta.description,
         offers: {
           '@type': 'Offer',
@@ -460,8 +493,10 @@ function App() {
       },
     ]
 
-    if (shouldRenderSeoContent || isAsteroidPage) {
-      const faqItems = isAsteroidPage
+    if (shouldRenderSeoContent || isAsteroidPage || isNuclearPage) {
+      const faqItems = isNuclearPage
+        ? NUCLEAR_FAQS
+        : isAsteroidPage
         ? ASTEROID_FAQS
         : comparisonMeta?.faq ?? MAIN_FAQS
       graph.push({
@@ -485,6 +520,7 @@ function App() {
   }, [
     comparisonMeta,
     isAsteroidPage,
+    isNuclearPage,
     pageMeta.canonical,
     pageMeta.description,
     pageMeta.title,
@@ -550,6 +586,8 @@ function App() {
 
   const headerEyebrow = comparisonMeta
     ? comparisonMeta.eyebrow
+    : isNuclearPage
+    ? 'Nuclear Weapon Effects'
     : isAsteroidPage
     ? 'Impact Effects Calculator'
     : isSeaLevelPage
@@ -561,6 +599,8 @@ function App() {
       : 'Experimental Projection Lab'
   const headerTitle = comparisonMeta
     ? comparisonMeta.h1
+    : isNuclearPage
+    ? 'Nuclear Blast Radius Map'
     : isAsteroidPage
     ? 'Asteroid Impact Simulator'
     : isSeaLevelPage
@@ -572,6 +612,8 @@ function App() {
       : 'Redefine the Equator'
   const headerDescription = comparisonMeta
     ? comparisonMeta.intro
+    : isNuclearPage
+    ? 'Pick a target, choose a weapon yield, and map the fireball, blast, thermal, and radiation rings using the Glasstone & Dolan nuclear-effects scaling laws.'
     : isAsteroidPage
     ? 'Pick an impact site, choose an asteroid, and map the crater, fireball, thermal burns, and blast zones with the Collins, Melosh & Marcus impact-effects model.'
     : isSeaLevelPage
@@ -1526,6 +1568,24 @@ function App() {
             <span className="view-tab-badge">new</span>
           </span>
         </NavLink>
+        <NavLink
+          className={({ isActive }) =>
+            `page-tab ${isActive ? 'is-active' : ''}`
+          }
+          to={NUCLEAR_PATH}
+          role="tab"
+          aria-selected={isNuclearPage}
+          aria-label="Nuclear blast radius map"
+        >
+          <span className="view-tab-content page-tab-content">
+            <Radiation className="page-tab-icon" size={16} aria-hidden="true" />
+            <span className="page-tab-text page-tab-text-desktop">
+              Nuclear blast
+            </span>
+            <span className="page-tab-text page-tab-text-mobile">Nuclear</span>
+            <span className="view-tab-badge">new</span>
+          </span>
+        </NavLink>
       </div>
 
       <header className="app-header">
@@ -1591,7 +1651,11 @@ function App() {
         </div>
       </header>
 
-      {isAsteroidPage ? (
+      {isNuclearPage ? (
+        <MapErrorBoundary key="nuclear" fallback={<ToolViewUnavailable name="nuclear blast radius map" />}>
+          <NuclearRoute />
+        </MapErrorBoundary>
+      ) : isAsteroidPage ? (
         <MapErrorBoundary key="asteroid" fallback={<ToolViewUnavailable name="asteroid impact simulator" />}>
           <AsteroidRoute />
         </MapErrorBoundary>
@@ -1714,6 +1778,8 @@ function App() {
 
       {isAsteroidPage && <AsteroidSeoContent />}
 
+      {isNuclearPage && <NuclearBlastSeoContent />}
+
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}
         aria-labelledby="share-card-title"
@@ -1725,7 +1791,9 @@ function App() {
           <div>
             <h2 id="share-card-title">Share This Tool</h2>
             <p>
-              {isAsteroidPage
+              {isNuclearPage
+                ? 'Share this nuclear blast radius map and let others model their own scenario.'
+                : isAsteroidPage
                 ? 'Share your asteroid impact scenario and let others run their own.'
                 : 'Help others discover this interactive map and globe experience.'}
             </p>
@@ -1819,7 +1887,9 @@ function App() {
             </button>
 
             <p className="share-hashtags">
-              {isAsteroidPage
+              {isNuclearPage
+                ? 'Suggested hashtags: #NuclearWeapons #BlastRadius #Science #History'
+                : isAsteroidPage
                 ? 'Suggested hashtags: #AsteroidImpact #Space #Science #Astronomy'
                 : 'Suggested hashtags: #TrueSizeMap #Geography #Cartography #Learning'}
             </p>

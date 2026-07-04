@@ -133,6 +133,39 @@ export const ASTEROID_FAQS: FaqItem[] = [
   },
 ]
 
+export const NUCLEAR_FAQS: FaqItem[] = [
+  {
+    question: 'What is a nuclear blast radius?',
+    answer:
+      'A nuclear blast radius is the distance from the detonation out to which a particular effect reaches — a level of blast overpressure, heat, or radiation. There is no single radius: each effect has its own ring, so building collapse, third-degree burns, and broken windows happen at very different distances, and every ring grows with the weapon’s yield.',
+  },
+  {
+    question: 'How is a nuclear blast radius calculated?',
+    answer:
+      'Blast radii are calculated with cube-root scaling: for a given overpressure, the distance grows with the cube root of the yield, so a 1,000 kt bomb reaches about ten times farther than a 1 kt bomb because the cube root of 1,000 is 10. This map applies the scaling laws published in Glasstone and Dolan’s The Effects of Nuclear Weapons, the same public reference that NUKEMAP uses, to draw each blast, thermal, and radiation ring to scale.',
+  },
+  {
+    question: 'What is the blast radius of a nuclear bomb?',
+    answer:
+      'It depends almost entirely on the yield. The 15-kiloton Hiroshima bomb collapsed most buildings out to roughly 1.7 km (the 5 psi ring) and broke windows out to about 4.4 km (1 psi). A 1-megaton warhead pushes those rings to roughly 7 km and 18 km, and the 50-megaton Tsar Bomba shatters windows more than 60 km away. Pick a preset or set a custom yield to see every ring drawn on the map.',
+  },
+  {
+    question: 'What is the difference between an airburst and a surface burst?',
+    answer:
+      'An airburst detonates the weapon high above the ground so the blast wave reflects off the surface and reaches farther, maximizing destruction over a wide area while producing little local fallout. A surface (ground) burst detonates at the surface: it digs a crater, has a larger fireball, and lifts debris into the cloud to create heavy radioactive fallout, but its blast rings are smaller than an optimally placed airburst of the same yield. Hiroshima and Nagasaki were both airbursts.',
+  },
+  {
+    question: 'How far does the radiation from a nuclear bomb reach?',
+    answer:
+      'Prompt radiation — the burst of neutrons and gamma rays at the moment of detonation — delivers a roughly 500 rem dose out to about 1 to 2 km for a small, Hiroshima-scale weapon, because the atmosphere absorbs it within a few kilometers. For larger weapons the blast and fire rings extend well beyond the prompt-radiation range, so radiation is rarely the limiting effect. Long-term fallout from a surface burst can travel far downwind, but it depends on weather and is not drawn on this map.',
+  },
+  {
+    question: 'How accurate is this nuclear blast radius map?',
+    answer:
+      'The rings are modeled estimates, not predictions of any specific event. They use the standard cube-root blast and thermal scaling laws from Glasstone and Dolan and assume flat terrain, clear air, and an idealized burst height. Real effects vary with weather, terrain, buildings, and the exact height of burst, so the map is best used as an educational illustration of scale rather than as a planning tool.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

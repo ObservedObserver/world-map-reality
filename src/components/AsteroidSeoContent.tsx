@@ -53,6 +53,7 @@ const AsteroidSeoContent = () => {
       <section aria-labelledby="asteroid-related-title">
         <h3 id="asteroid-related-title">More interactive map tools</h3>
         <div className="seo-link-grid">
+          <a href="/tool/true-size-map/nuclear-blast-radius-map">Nuclear Blast Radius Map</a>
           <a href="/tool/true-size-map">True Size of Countries Map</a>
           <a href="/tool/true-size-map/sea-level-rise-simulator">Sea Level Rise Simulator</a>
           <a href="/tool/true-size-map/country-size-on-planets">Country Size on Other Planets</a>

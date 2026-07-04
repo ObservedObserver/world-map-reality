@@ -471,6 +471,15 @@ const SeaLevelRiseView = () => {
             </li>
           </ul>
         </details>
+
+        <p className="sea-level-related">
+          More map tools:{' '}
+          <a href="/tool/true-size-map/asteroid-impact-simulator">
+            Asteroid Impact Simulator
+          </a>{' '}
+          ·{' '}
+          <a href="/tool/true-size-map">True Size of Countries Map</a>
+        </p>
       </section>
       {downloadModalOpen && (
         <div className="download-modal" role="dialog" aria-modal="true">

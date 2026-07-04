@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["dev", "--port", "5180", "--strictPort"],
+      "port": 5180
+    },
+    {
+      "name": "orrery-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-lc",
+        "cd /Users/observedobserver/Documents/GitHub/orrery && npx vite --host 127.0.0.1 --port 5181 --strictPort"
+      ],
+      "port": 5181
+    }
+  ]
+}

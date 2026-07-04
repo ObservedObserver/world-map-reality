@@ -131,6 +131,21 @@ const SeoContent = ({ comparison }: SeoContentProps) => {
         </div>
       </section>
 
+      <section aria-labelledby="more-tools-title">
+        <h3 id="more-tools-title">More interactive map tools</h3>
+        <div className="seo-link-grid">
+          <a href="/tool/true-size-map/asteroid-impact-simulator">
+            Asteroid Impact Simulator
+          </a>
+          <a href="/tool/true-size-map/sea-level-rise-simulator">
+            Sea Level Rise Simulator
+          </a>
+          <a href="/tool/true-size-map/country-size-on-planets">
+            Country Size on Other Planets
+          </a>
+        </div>
+      </section>
+
       <section className="seo-faq" aria-labelledby="main-faq-title">
         <h3 id="main-faq-title">FAQ</h3>
         {MAIN_FAQS.map((item) => (

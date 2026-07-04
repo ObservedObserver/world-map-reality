@@ -100,6 +100,39 @@ export const EQUATOR_FAQS: FaqItem[] = [
   },
 ]
 
+export const ASTEROID_FAQS: FaqItem[] = [
+  {
+    question: 'What does an asteroid impact simulator calculate?',
+    answer:
+      'It estimates the consequences of an asteroid striking Earth — the impact energy in megatons of TNT, the crater size, the fireball radius, the thermal radiation zones that cause burns, the air-blast overpressure rings, the peak wind speed, and the seismic magnitude — based on the asteroid size, speed, impact angle, and composition you choose.',
+  },
+  {
+    question: 'How is asteroid impact energy calculated?',
+    answer:
+      'Impact energy is the kinetic energy of the asteroid, one half times its mass times its velocity squared. The mass comes from the diameter and density (an iron asteroid is far heavier than an icy one of the same size). The energy is then expressed in megatons of TNT for comparison: one megaton equals 4.184 × 10^15 joules.',
+  },
+  {
+    question: 'What is the difference between an airburst and a crater-forming impact?',
+    answer:
+      'Small or low-density asteroids break apart in the atmosphere and release their energy as an airburst before reaching the ground, so no crater forms — the 2013 Chelyabinsk and 1908 Tunguska events were airbursts. Larger or denser bodies, especially iron ones, keep enough momentum to hit the surface and excavate a crater.',
+  },
+  {
+    question: 'How big does an asteroid need to be to cause mass extinction?',
+    answer:
+      'The Chicxulub impactor that ended the age of dinosaurs about 66 million years ago is estimated at roughly 10 kilometers across and released on the order of 100 million megatons of TNT. Impacts that large occur only every hundred million years or so, while city-threatening impacts of tens of meters are far more frequent.',
+  },
+  {
+    question: 'Which model do the impact effects use?',
+    answer:
+      'The calculations follow the Earth Impact Effects Program published by Gareth Collins, Jay Melosh, and Robert Marcus in 2005, which combines atmospheric-entry physics, crater-scaling laws from experiments and nuclear tests, fireball thermal radiation, and air-blast data into a single set of equations.',
+  },
+  {
+    question: 'How accurate is an asteroid impact simulation?',
+    answer:
+      'The results are order-of-magnitude estimates with large uncertainties, particularly for airburst blast effects and very large impacts. The model assumes a land target and does not include ocean impacts, tsunamis, ejecta fallout, or long-term climate effects, so it is best used for education rather than emergency planning.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

@@ -6,6 +6,7 @@
     "/country-size-on-planets": "globe",
     "/custom-mercator-projection": "equator",
     "/sea-level-rise-simulator": "seaLevel",
+    "/asteroid-impact-simulator": "asteroid",
     "/compare/greenland-vs-africa": "compare:greenland-vs-africa",
     "/compare/russia-vs-united-states": "compare:russia-vs-united-states",
     "/compare/canada-vs-united-states": "compare:canada-vs-united-states",
@@ -35,6 +36,11 @@
       "title": "Sea Level Rise Interactive Map",
       "description": "Simulate sea level rise on a satellite world map or 3d globe map, online simulator for sea level rise.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator"
+    },
+    "asteroid": {
+      "title": "Asteroid Impact Simulator: Crater, Blast & Thermal Zones",
+      "description": "Simulate an asteroid impact anywhere on Earth. Set the size, speed, angle, and composition to map the crater, fireball, blast, and thermal zones.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/asteroid-impact-simulator"
     }
   },
   "comparisons": {

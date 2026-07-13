@@ -19,10 +19,15 @@ import {
   Globe,
   Linkedin,
   Mail,
+  Map as MapIcon,
   MessageCircle,
+  Orbit,
+  Compass,
   Radiation,
   Share2,
+  Sun,
   Twitter,
+  Waves,
   Youtube,
 } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -82,7 +87,13 @@ import EquatorSeoContent from './components/EquatorSeoContent'
 import MapErrorBoundary from './components/MapErrorBoundary'
 import AsteroidSeoContent from './components/AsteroidSeoContent'
 import NuclearBlastSeoContent from './components/NuclearBlastSeoContent'
-import { ASTEROID_FAQS, MAIN_FAQS, NUCLEAR_FAQS } from './seo'
+import SunAnalemmaSeoContent from './components/SunAnalemmaSeoContent'
+import {
+  ASTEROID_FAQS,
+  MAIN_FAQS,
+  NUCLEAR_FAQS,
+  SUN_ANALEMMA_FAQS,
+} from './seo'
 import seoMeta from './seo-meta.json'
 import './App.css'
 
@@ -91,12 +102,14 @@ const CUSTOM_MERCATOR_PATH = '/custom-mercator-projection'
 const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
 const ASTEROID_PATH = '/asteroid-impact-simulator'
 const NUCLEAR_PATH = '/nuclear-blast-radius-map'
+const SUN_ANALEMMA_PATH = '/sun-analemma-calculator'
 const COMPARE_PATH_PREFIX = '/compare/'
 const SEA_LEVEL_SHORTS_EMBED_URL =
   'https://www.youtube.com/embed/tMaH9cFs8XM'
 const SeaLevelRiseView = lazy(() => import('./components/SeaLevelRiseView'))
 const AsteroidImpactView = lazy(() => import('./components/AsteroidImpactView'))
 const NuclearBlastView = lazy(() => import('./components/NuclearBlastView'))
+const SunAnalemmaView = lazy(() => import('./components/SunAnalemmaView'))
 
 const SeaLevelLoading = () => (
   <main className="sea-level-layout">
@@ -188,6 +201,40 @@ const NuclearRoute = () => {
   return (
     <Suspense fallback={<NuclearLoading />}>
       <NuclearBlastView />
+    </Suspense>
+  )
+}
+
+const AnalemmaLoading = () => (
+  <main className="analemma-layout">
+    <div className="panel-empty">Loading Sun analemma explorer...</div>
+  </main>
+)
+
+const AnalemmaRoute = ({
+  worldFeatures,
+  loading,
+  error,
+}: {
+  worldFeatures: CountryFeature[]
+  loading: boolean
+  error: string | null
+}) => {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) return <AnalemmaLoading />
+
+  return (
+    <Suspense fallback={<AnalemmaLoading />}>
+      <SunAnalemmaView
+        worldFeatures={worldFeatures}
+        loading={loading}
+        error={error}
+      />
     </Suspense>
   )
 }
@@ -391,11 +438,13 @@ function App() {
   }, [setPlanetDragging, setGlobeDragging])
 
   const location = useLocation()
+  const activeNavItemRef = useRef<HTMLAnchorElement | null>(null)
   const isEquatorLab = location.pathname.startsWith(CUSTOM_MERCATOR_PATH)
   const isGlobePage = location.pathname.startsWith(TRUE_SIZE_GLOBE_PATH)
   const isSeaLevelPage = location.pathname.startsWith(SEA_LEVEL_PATH)
   const isAsteroidPage = location.pathname.startsWith(ASTEROID_PATH)
   const isNuclearPage = location.pathname.startsWith(NUCLEAR_PATH)
+  const isAnalemmaPage = location.pathname.startsWith(SUN_ANALEMMA_PATH)
   const comparisonSlug = location.pathname.startsWith(COMPARE_PATH_PREFIX)
     ? location.pathname.slice(COMPARE_PATH_PREFIX.length).split('/')[0]
     : null
@@ -413,11 +462,30 @@ function App() {
     return null
   }, [comparisonSlug])
   const isTrueSizePage =
-    !isEquatorLab && !isSeaLevelPage && !isAsteroidPage && !isNuclearPage
+    !isEquatorLab &&
+    !isSeaLevelPage &&
+    !isAsteroidPage &&
+    !isNuclearPage &&
+    !isAnalemmaPage
   const activeView =
     isTrueSizePage && isGlobePage ? 'globe' : 'map'
   const isMapView = activeView === 'map'
   const shouldRenderSeoContent = isTrueSizePage && isMapView
+
+  useEffect(() => {
+    const activeItem = activeNavItemRef.current
+    if (!activeItem || !window.matchMedia('(max-width: 760px)').matches) {
+      return
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      const track = activeItem.parentElement
+      if (!track) return
+      const centeredLeft =
+        activeItem.offsetLeft - track.clientWidth / 2 + activeItem.clientWidth / 2
+      track.scrollTo({ left: Math.max(0, centeredLeft), behavior: 'auto' })
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [location.pathname])
 
   const savedTrueSizeStateRef = useRef<ViewSelectionState | null>(null)
   const savedEquatorStateRef = useRef<ViewSelectionState | null>(null)
@@ -429,6 +497,9 @@ function App() {
     }
     if (isNuclearPage) {
       return seoMeta.pages.nuclear
+    }
+    if (isAnalemmaPage) {
+      return seoMeta.pages.analemma
     }
     if (isAsteroidPage) {
       return seoMeta.pages.asteroid
@@ -443,7 +514,7 @@ function App() {
       return seoMeta.pages.globe
     }
     return seoMeta.pages.map
-  }, [comparisonMeta, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isSeaLevelPage])
+  }, [comparisonMeta, isAnalemmaPage, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isSeaLevelPage])
   const shareUrl = pageMeta.canonical
   const structuredData = useMemo(() => {
     const breadcrumbs = [
@@ -456,8 +527,8 @@ function App() {
       {
         '@type': 'ListItem',
         position: 2,
-        name: 'True Size of Countries Map',
-        item: seoMeta.siteBaseUrl,
+        name: comparisonMeta ? 'True Size of Countries Map' : pageMeta.title,
+        item: comparisonMeta ? seoMeta.siteBaseUrl : pageMeta.canonical,
       },
     ]
 
@@ -478,7 +549,8 @@ function App() {
         url: pageMeta.canonical,
         image: seoMeta.siteImageUrl,
         applicationCategory: 'EducationalApplication',
-        operatingSystem: isAsteroidPage || isNuclearPage ? 'All' : 'Any',
+        operatingSystem:
+          isAsteroidPage || isNuclearPage || isAnalemmaPage ? 'All' : 'Any',
         description: pageMeta.description,
         offers: {
           '@type': 'Offer',
@@ -493,9 +565,16 @@ function App() {
       },
     ]
 
-    if (shouldRenderSeoContent || isAsteroidPage || isNuclearPage) {
+    if (
+      shouldRenderSeoContent ||
+      isAsteroidPage ||
+      isNuclearPage ||
+      isAnalemmaPage
+    ) {
       const faqItems = isNuclearPage
         ? NUCLEAR_FAQS
+        : isAnalemmaPage
+        ? SUN_ANALEMMA_FAQS
         : isAsteroidPage
         ? ASTEROID_FAQS
         : comparisonMeta?.faq ?? MAIN_FAQS
@@ -519,6 +598,7 @@ function App() {
     }
   }, [
     comparisonMeta,
+    isAnalemmaPage,
     isAsteroidPage,
     isNuclearPage,
     pageMeta.canonical,
@@ -529,17 +609,20 @@ function App() {
   const shareLinks = useMemo(() => {
     const encodedUrl = encodeURIComponent(shareUrl)
     const encodedTitle = encodeURIComponent(pageMeta.title)
+    const hashtags = isAnalemmaPage
+      ? 'Analemma,Astronomy,SunPosition'
+      : 'TrueSizeMap,Cartography,Geography'
     const encodedEmailBody = encodeURIComponent(
       `${pageMeta.description}\n\n${shareUrl}`
     )
     return {
-      x: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}&hashtags=TrueSizeMap,Cartography,Geography`,
+      x: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}&hashtags=${hashtags}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
       linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
       whatsapp: `https://wa.me/?text=${encodeURIComponent(`${pageMeta.title} ${shareUrl}`)}`,
       email: `mailto:?subject=${encodedTitle}&body=${encodedEmailBody}`,
     }
-  }, [pageMeta.description, pageMeta.title, shareUrl])
+  }, [isAnalemmaPage, pageMeta.description, pageMeta.title, shareUrl])
 
   const handleCopyShareLink = useCallback(async () => {
     try {
@@ -586,6 +669,8 @@ function App() {
 
   const headerEyebrow = comparisonMeta
     ? comparisonMeta.eyebrow
+    : isAnalemmaPage
+    ? 'Interactive Solar Astronomy'
     : isNuclearPage
     ? 'Nuclear Weapon Effects'
     : isAsteroidPage
@@ -599,6 +684,8 @@ function App() {
       : 'Experimental Projection Lab'
   const headerTitle = comparisonMeta
     ? comparisonMeta.h1
+    : isAnalemmaPage
+    ? 'Sun Analemma Calculator'
     : isNuclearPage
     ? 'Nuclear Blast Radius Map'
     : isAsteroidPage
@@ -612,6 +699,8 @@ function App() {
       : 'Redefine the Equator'
   const headerDescription = comparisonMeta
     ? comparisonMeta.intro
+    : isAnalemmaPage
+    ? 'Choose any place on Earth and trace the Sun’s figure-eight path at the same UTC time across all 365 days of the year.'
     : isNuclearPage
     ? 'Pick a target, choose a weapon yield, and map the fireball, blast, thermal, and radiation rings using the Glasstone & Dolan nuclear-effects scaling laws.'
     : isAsteroidPage
@@ -1496,97 +1585,59 @@ function App() {
         </script>
       </Helmet>
       <div className="app">
-      <div className="page-tabs" role="tablist" aria-label="Experience views">
+      <nav className="page-tabs" aria-label="Interactive science tools">
         <a
-          className="page-tab page-tab-external"
+          className="page-tabs-brand"
           href="https://www.runcell.dev"
           target="_blank"
           rel="noopener noreferrer"
-          role="tab"
-          aria-selected="false"
-          aria-label="Runcell AI"
+          aria-label="Visit Runcell"
         >
-          <span className="page-tab-text">Runcell AI</span>
+          <span className="page-tabs-brand-mark" aria-hidden="true">
+            <Orbit size={19} />
+          </span>
+          <span className="page-tabs-brand-copy">
+            <strong>Runcell</strong>
+            <small>Science tools</small>
+          </span>
         </a>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={TRUE_SIZE_GLOBE_PATH}
-          role="tab"
-          aria-selected={isGlobePage}
-          aria-label="Size on other planets"
-        >
-          <span className="view-tab-content page-tab-content">
+
+        <div className="page-tabs-list">
+          <NavLink
+            ref={isTrueSizePage && isMapView ? activeNavItemRef : undefined}
+            className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`}
+            to="/"
+            end
+          >
+            <MapIcon className="page-tab-icon" size={16} aria-hidden="true" />
+            <span>True size</span>
+          </NavLink>
+          <NavLink ref={isGlobePage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={TRUE_SIZE_GLOBE_PATH}>
             <Globe className="page-tab-icon" size={16} aria-hidden="true" />
-            <span className="page-tab-text page-tab-text-desktop">
-              Size on other planets
-            </span>
-            <span className="page-tab-text page-tab-text-mobile">
-              Other planets
-            </span>
-            <span className="view-tab-badge">new</span>
-          </span>
-        </NavLink>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={CUSTOM_MERCATOR_PATH}
-          role="tab"
-          aria-selected={isEquatorLab}
-          aria-label="Equator lab"
-        >
-          <span className="page-tab-text">Equator lab</span>
-        </NavLink>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={SEA_LEVEL_PATH}
-          role="tab"
-          aria-selected={isSeaLevelPage}
-          aria-label="Sea level map"
-        >
-          <span className="page-tab-text">Sea level map</span>
-        </NavLink>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={ASTEROID_PATH}
-          role="tab"
-          aria-selected={isAsteroidPage}
-          aria-label="Asteroid impact simulator"
-        >
-          <span className="view-tab-content page-tab-content">
+            <span>Planets</span>
+          </NavLink>
+          <NavLink ref={isEquatorLab ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={CUSTOM_MERCATOR_PATH}>
+            <Compass className="page-tab-icon" size={16} aria-hidden="true" />
+            <span>Equator</span>
+          </NavLink>
+          <NavLink ref={isSeaLevelPage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={SEA_LEVEL_PATH}>
+            <Waves className="page-tab-icon" size={16} aria-hidden="true" />
+            <span>Sea level</span>
+          </NavLink>
+          <NavLink ref={isAsteroidPage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={ASTEROID_PATH}>
             <Flame className="page-tab-icon" size={16} aria-hidden="true" />
-            <span className="page-tab-text page-tab-text-desktop">
-              Asteroid impact
-            </span>
-            <span className="page-tab-text page-tab-text-mobile">Asteroid</span>
-            <span className="view-tab-badge">new</span>
-          </span>
-        </NavLink>
-        <NavLink
-          className={({ isActive }) =>
-            `page-tab ${isActive ? 'is-active' : ''}`
-          }
-          to={NUCLEAR_PATH}
-          role="tab"
-          aria-selected={isNuclearPage}
-          aria-label="Nuclear blast radius map"
-        >
-          <span className="view-tab-content page-tab-content">
+            <span>Asteroid</span>
+          </NavLink>
+          <NavLink ref={isNuclearPage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={NUCLEAR_PATH}>
             <Radiation className="page-tab-icon" size={16} aria-hidden="true" />
-            <span className="page-tab-text page-tab-text-desktop">
-              Nuclear blast
-            </span>
-            <span className="page-tab-text page-tab-text-mobile">Nuclear</span>
-            <span className="view-tab-badge">new</span>
-          </span>
-        </NavLink>
-      </div>
+            <span>Nuclear</span>
+          </NavLink>
+          <NavLink ref={isAnalemmaPage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={SUN_ANALEMMA_PATH}>
+            <Sun className="page-tab-icon" size={16} aria-hidden="true" />
+            <span>Analemma</span>
+          </NavLink>
+        </div>
+      </nav>
 
       <header className="app-header">
         <div className="header-copy">
@@ -1651,7 +1702,15 @@ function App() {
         </div>
       </header>
 
-      {isNuclearPage ? (
+      {isAnalemmaPage ? (
+        <MapErrorBoundary key="analemma" fallback={<ToolViewUnavailable name="Sun analemma calculator" />}>
+          <AnalemmaRoute
+            worldFeatures={worldFeatures}
+            loading={loading}
+            error={error}
+          />
+        </MapErrorBoundary>
+      ) : isNuclearPage ? (
         <MapErrorBoundary key="nuclear" fallback={<ToolViewUnavailable name="nuclear blast radius map" />}>
           <NuclearRoute />
         </MapErrorBoundary>
@@ -1780,6 +1839,8 @@ function App() {
 
       {isNuclearPage && <NuclearBlastSeoContent />}
 
+      {isAnalemmaPage && <SunAnalemmaSeoContent />}
+
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}
         aria-labelledby="share-card-title"
@@ -1793,6 +1854,8 @@ function App() {
             <p>
               {isNuclearPage
                 ? 'Share this nuclear blast radius map and let others model their own scenario.'
+                : isAnalemmaPage
+                ? 'Share this Sun analemma calculator and let others trace the figure eight from anywhere on Earth.'
                 : isAsteroidPage
                 ? 'Share your asteroid impact scenario and let others run their own.'
                 : 'Help others discover this interactive map and globe experience.'}
@@ -1889,6 +1952,8 @@ function App() {
             <p className="share-hashtags">
               {isNuclearPage
                 ? 'Suggested hashtags: #NuclearWeapons #BlastRadius #Science #History'
+                : isAnalemmaPage
+                ? 'Suggested hashtags: #Analemma #Astronomy #SunPosition #Science'
                 : isAsteroidPage
                 ? 'Suggested hashtags: #AsteroidImpact #Space #Science #Astronomy'
                 : 'Suggested hashtags: #TrueSizeMap #Geography #Cartography #Learning'}

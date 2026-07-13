@@ -8,6 +8,7 @@
     "/sea-level-rise-simulator": "seaLevel",
     "/asteroid-impact-simulator": "asteroid",
     "/nuclear-blast-radius-map": "nuclear",
+    "/sun-analemma-calculator": "analemma",
     "/compare/greenland-vs-africa": "compare:greenland-vs-africa",
     "/compare/russia-vs-united-states": "compare:russia-vs-united-states",
     "/compare/canada-vs-united-states": "compare:canada-vs-united-states",
@@ -47,6 +48,11 @@
       "title": "Nuclear Blast Radius Map: Blast, Thermal & Radiation Zones",
       "description": "Map the blast, thermal, and radiation rings of a nuclear bomb anywhere on Earth. Pick a target, choose a yield from Hiroshima to Tsar Bomba, and see the scale.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/nuclear-blast-radius-map"
+    },
+    "analemma": {
+      "title": "Sun Analemma Calculator — Interactive Figure-8 Diagram",
+      "description": "Plot the Sun's analemma for any location on Earth. Change the UTC time, inspect all 365 dates, and explore solar altitude, azimuth, and the equation of time.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/sun-analemma-calculator"
     }
   },
   "comparisons": {

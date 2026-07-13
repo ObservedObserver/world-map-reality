@@ -166,6 +166,34 @@ export const NUCLEAR_FAQS: FaqItem[] = [
   },
 ]
 
+export const SUN_ANALEMMA_FAQS: FaqItem[] = [
+  {
+    question: 'What is a Sun analemma?',
+    answer:
+      'A Sun analemma is the lopsided figure-eight path made by the Sun when its position is recorded from one location at the same clock time throughout a year.',
+  },
+  {
+    question: 'Why does the analemma form a figure eight?',
+    answer:
+      'The north-south motion comes mainly from Earth’s 23.4-degree axial tilt, while the east-west motion comes from the equation of time caused by the tilt and Earth’s slightly elliptical orbit.',
+  },
+  {
+    question: 'Does the analemma look different in each location?',
+    answer:
+      'Yes. Latitude changes the altitude and orientation of the curve, longitude changes which UTC times place it above the horizon, and the two hemispheres face opposite directions toward the equator.',
+  },
+  {
+    question: 'What are altitude and azimuth?',
+    answer:
+      'Altitude is the Sun’s angle above the horizon, from 0 degrees at the horizon to 90 degrees overhead. Azimuth is its compass bearing measured clockwise from north.',
+  },
+  {
+    question: 'Why does this calculator use UTC?',
+    answer:
+      'A fixed UTC time keeps every sample evenly spaced in clock time. Local daylight-saving changes would shift some observations by an hour and introduce an artificial jump in the curve.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

@@ -194,6 +194,39 @@ export const SUN_ANALEMMA_FAQS: FaqItem[] = [
   },
 ]
 
+export const MOON_PLANETS_FAQS: FaqItem[] = [
+  {
+    question: 'What would Jupiter look like if it replaced the Moon?',
+    answer:
+      'Jupiter at the Moon’s distance of 384,400 km would span about 21 degrees of sky — roughly 40 full Moons side by side, or two fists held at arm’s length. Its cloud bands and the Great Red Spot would be visible to the naked eye, and its reflected light would make the night thousands of times brighter than a full Moon.',
+  },
+  {
+    question: 'How big would Saturn and its rings look in place of the Moon?',
+    answer:
+      'Saturn’s globe would cover about 18 degrees, and the A–C ring system, 280,440 km across, would stretch roughly 40 degrees from tip to tip — nearly half the distance from the horizon to straight overhead.',
+  },
+  {
+    question: 'What would the Sun look like at the Moon’s distance?',
+    answer:
+      'You could not see it from outside, because Earth would be inside it. The Sun’s radius is about 696,000 km — almost twice the Moon’s distance of 384,400 km — so a Sun centered where the Moon is would engulf Earth entirely. The simulator shows this case and lets you slide the Sun farther away until its disk fits in the sky.',
+  },
+  {
+    question: 'Would Earth survive a planet at the Moon’s distance?',
+    answer:
+      'No, for the larger bodies. This is a visual thought experiment only: a gas giant that close would raise enormous tides, destabilize Earth’s orbit and crust, and in Jupiter’s case put Earth inside its Roche limit and intense radiation belts. The simulator ignores gravity and shows only what your eyes would see.',
+  },
+  {
+    question: 'How big does the real Moon look in the sky?',
+    answer:
+      'The full Moon has an angular diameter of about 0.52 degrees — small enough to cover with a pea held at arm’s length. It looks large mainly because it is the biggest and brightest object in the night sky, and the well-known “Moon illusion” makes it seem bigger near the horizon.',
+  },
+  {
+    question: 'How does the simulator calculate each planet’s apparent size?',
+    answer:
+      'It uses the exact angular-diameter formula for a sphere: 2 × asin(radius ÷ distance), with planet diameters from NASA planetary fact sheets and the Moon’s mean center-to-center distance of 384,400 km. The 3D scene then renders each sphere at that exact angular scale, so the view matches what a camera with the same field of view would photograph.',
+  },
+]
+
 export const POPULAR_COMPARISON_LINKS = [
   {
     title: 'Greenland vs Africa',

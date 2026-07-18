@@ -9,6 +9,7 @@
     "/asteroid-impact-simulator": "asteroid",
     "/nuclear-blast-radius-map": "nuclear",
     "/sun-analemma-calculator": "analemma",
+    "/moon-replaced-by-planets": "planetSky",
     "/compare/greenland-vs-africa": "compare:greenland-vs-africa",
     "/compare/russia-vs-united-states": "compare:russia-vs-united-states",
     "/compare/canada-vs-united-states": "compare:canada-vs-united-states",
@@ -53,6 +54,11 @@
       "title": "Sun Analemma Calculator — Interactive Figure-8 Diagram",
       "description": "Plot the Sun's analemma for any location on Earth. Change the UTC time, inspect all 365 dates, and explore solar altitude, azimuth, and the equation of time.",
       "canonical": "https://www.runcell.dev/tool/true-size-map/sun-analemma-calculator"
+    },
+    "planetSky": {
+      "title": "If the Moon Were Replaced by Planets — Night Sky Simulator",
+      "description": "See what Jupiter, Saturn, or the Sun would look like in Earth's sky at the Moon's distance. A 3D simulator that renders every planet at its true angular size.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/moon-replaced-by-planets"
     }
   },
   "comparisons": {

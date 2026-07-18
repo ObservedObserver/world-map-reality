@@ -21,6 +21,7 @@ import {
   Mail,
   Map as MapIcon,
   MessageCircle,
+  MoonStar,
   Orbit,
   Compass,
   Radiation,
@@ -88,9 +89,11 @@ import MapErrorBoundary from './components/MapErrorBoundary'
 import AsteroidSeoContent from './components/AsteroidSeoContent'
 import NuclearBlastSeoContent from './components/NuclearBlastSeoContent'
 import SunAnalemmaSeoContent from './components/SunAnalemmaSeoContent'
+import PlanetSkySeoContent from './components/PlanetSkySeoContent'
 import {
   ASTEROID_FAQS,
   MAIN_FAQS,
+  MOON_PLANETS_FAQS,
   NUCLEAR_FAQS,
   SUN_ANALEMMA_FAQS,
 } from './seo'
@@ -103,6 +106,7 @@ const SEA_LEVEL_PATH = '/sea-level-rise-simulator'
 const ASTEROID_PATH = '/asteroid-impact-simulator'
 const NUCLEAR_PATH = '/nuclear-blast-radius-map'
 const SUN_ANALEMMA_PATH = '/sun-analemma-calculator'
+const PLANET_SKY_PATH = '/moon-replaced-by-planets'
 const COMPARE_PATH_PREFIX = '/compare/'
 const SEA_LEVEL_SHORTS_EMBED_URL =
   'https://www.youtube.com/embed/tMaH9cFs8XM'
@@ -110,6 +114,7 @@ const SeaLevelRiseView = lazy(() => import('./components/SeaLevelRiseView'))
 const AsteroidImpactView = lazy(() => import('./components/AsteroidImpactView'))
 const NuclearBlastView = lazy(() => import('./components/NuclearBlastView'))
 const SunAnalemmaView = lazy(() => import('./components/SunAnalemmaView'))
+const PlanetSkyView = lazy(() => import('./components/PlanetSkyView'))
 
 const SeaLevelLoading = () => (
   <main className="sea-level-layout">
@@ -210,6 +215,28 @@ const AnalemmaLoading = () => (
     <div className="panel-empty">Loading Sun analemma explorer...</div>
   </main>
 )
+
+const PlanetSkyLoading = () => (
+  <main className="planet-sky-layout">
+    <div className="panel-empty">Loading night sky simulator...</div>
+  </main>
+)
+
+const PlanetSkyRoute = () => {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) return <PlanetSkyLoading />
+
+  return (
+    <Suspense fallback={<PlanetSkyLoading />}>
+      <PlanetSkyView />
+    </Suspense>
+  )
+}
 
 const AnalemmaRoute = ({
   worldFeatures,
@@ -445,6 +472,7 @@ function App() {
   const isAsteroidPage = location.pathname.startsWith(ASTEROID_PATH)
   const isNuclearPage = location.pathname.startsWith(NUCLEAR_PATH)
   const isAnalemmaPage = location.pathname.startsWith(SUN_ANALEMMA_PATH)
+  const isPlanetSkyPage = location.pathname.startsWith(PLANET_SKY_PATH)
   const comparisonSlug = location.pathname.startsWith(COMPARE_PATH_PREFIX)
     ? location.pathname.slice(COMPARE_PATH_PREFIX.length).split('/')[0]
     : null
@@ -466,7 +494,8 @@ function App() {
     !isSeaLevelPage &&
     !isAsteroidPage &&
     !isNuclearPage &&
-    !isAnalemmaPage
+    !isAnalemmaPage &&
+    !isPlanetSkyPage
   const activeView =
     isTrueSizePage && isGlobePage ? 'globe' : 'map'
   const isMapView = activeView === 'map'
@@ -501,6 +530,9 @@ function App() {
     if (isAnalemmaPage) {
       return seoMeta.pages.analemma
     }
+    if (isPlanetSkyPage) {
+      return seoMeta.pages.planetSky
+    }
     if (isAsteroidPage) {
       return seoMeta.pages.asteroid
     }
@@ -514,7 +546,7 @@ function App() {
       return seoMeta.pages.globe
     }
     return seoMeta.pages.map
-  }, [comparisonMeta, isAnalemmaPage, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isSeaLevelPage])
+  }, [comparisonMeta, isAnalemmaPage, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isPlanetSkyPage, isSeaLevelPage])
   const shareUrl = pageMeta.canonical
   const structuredData = useMemo(() => {
     const breadcrumbs = [
@@ -550,7 +582,9 @@ function App() {
         image: seoMeta.siteImageUrl,
         applicationCategory: 'EducationalApplication',
         operatingSystem:
-          isAsteroidPage || isNuclearPage || isAnalemmaPage ? 'All' : 'Any',
+          isAsteroidPage || isNuclearPage || isAnalemmaPage || isPlanetSkyPage
+            ? 'All'
+            : 'Any',
         description: pageMeta.description,
         offers: {
           '@type': 'Offer',
@@ -569,12 +603,15 @@ function App() {
       shouldRenderSeoContent ||
       isAsteroidPage ||
       isNuclearPage ||
-      isAnalemmaPage
+      isAnalemmaPage ||
+      isPlanetSkyPage
     ) {
       const faqItems = isNuclearPage
         ? NUCLEAR_FAQS
         : isAnalemmaPage
         ? SUN_ANALEMMA_FAQS
+        : isPlanetSkyPage
+        ? MOON_PLANETS_FAQS
         : isAsteroidPage
         ? ASTEROID_FAQS
         : comparisonMeta?.faq ?? MAIN_FAQS
@@ -601,6 +638,7 @@ function App() {
     isAnalemmaPage,
     isAsteroidPage,
     isNuclearPage,
+    isPlanetSkyPage,
     pageMeta.canonical,
     pageMeta.description,
     pageMeta.title,
@@ -611,6 +649,8 @@ function App() {
     const encodedTitle = encodeURIComponent(pageMeta.title)
     const hashtags = isAnalemmaPage
       ? 'Analemma,Astronomy,SunPosition'
+      : isPlanetSkyPage
+      ? 'NightSky,Astronomy,Planets'
       : 'TrueSizeMap,Cartography,Geography'
     const encodedEmailBody = encodeURIComponent(
       `${pageMeta.description}\n\n${shareUrl}`
@@ -622,7 +662,7 @@ function App() {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(`${pageMeta.title} ${shareUrl}`)}`,
       email: `mailto:?subject=${encodedTitle}&body=${encodedEmailBody}`,
     }
-  }, [isAnalemmaPage, pageMeta.description, pageMeta.title, shareUrl])
+  }, [isAnalemmaPage, isPlanetSkyPage, pageMeta.description, pageMeta.title, shareUrl])
 
   const handleCopyShareLink = useCallback(async () => {
     try {
@@ -669,6 +709,8 @@ function App() {
 
   const headerEyebrow = comparisonMeta
     ? comparisonMeta.eyebrow
+    : isPlanetSkyPage
+    ? 'Night Sky Simulator'
     : isAnalemmaPage
     ? 'Interactive Solar Astronomy'
     : isNuclearPage
@@ -684,6 +726,8 @@ function App() {
       : 'Experimental Projection Lab'
   const headerTitle = comparisonMeta
     ? comparisonMeta.h1
+    : isPlanetSkyPage
+    ? 'If the Moon Were Replaced by Planets'
     : isAnalemmaPage
     ? 'Sun Analemma Calculator'
     : isNuclearPage
@@ -699,6 +743,8 @@ function App() {
       : 'Redefine the Equator'
   const headerDescription = comparisonMeta
     ? comparisonMeta.intro
+    : isPlanetSkyPage
+    ? 'Stand under a night sky and swap the Moon for Jupiter, Saturn, or even the Sun — every body rendered at its true angular size at the Moon’s distance. Drag to look around.'
     : isAnalemmaPage
     ? 'Choose any place on Earth and trace the Sun’s figure-eight path at the same UTC time across all 365 days of the year.'
     : isNuclearPage
@@ -1636,6 +1682,10 @@ function App() {
             <Sun className="page-tab-icon" size={16} aria-hidden="true" />
             <span>Analemma</span>
           </NavLink>
+          <NavLink ref={isPlanetSkyPage ? activeNavItemRef : undefined} className={({ isActive }) => `page-tab ${isActive ? 'is-active' : ''}`} to={PLANET_SKY_PATH}>
+            <MoonStar className="page-tab-icon" size={16} aria-hidden="true" />
+            <span>Night sky</span>
+          </NavLink>
         </div>
       </nav>
 
@@ -1702,7 +1752,11 @@ function App() {
         </div>
       </header>
 
-      {isAnalemmaPage ? (
+      {isPlanetSkyPage ? (
+        <MapErrorBoundary key="planet-sky" fallback={<ToolViewUnavailable name="night sky simulator" />}>
+          <PlanetSkyRoute />
+        </MapErrorBoundary>
+      ) : isAnalemmaPage ? (
         <MapErrorBoundary key="analemma" fallback={<ToolViewUnavailable name="Sun analemma calculator" />}>
           <AnalemmaRoute
             worldFeatures={worldFeatures}
@@ -1841,6 +1895,8 @@ function App() {
 
       {isAnalemmaPage && <SunAnalemmaSeoContent />}
 
+      {isPlanetSkyPage && <PlanetSkySeoContent />}
+
       <section
         className={`share-card ${isSeaLevelPage ? 'has-slot' : ''}`}
         aria-labelledby="share-card-title"
@@ -1854,6 +1910,8 @@ function App() {
             <p>
               {isNuclearPage
                 ? 'Share this nuclear blast radius map and let others model their own scenario.'
+                : isPlanetSkyPage
+                ? 'Share this night sky simulator and show others what Jupiter would look like in place of the Moon.'
                 : isAnalemmaPage
                 ? 'Share this Sun analemma calculator and let others trace the figure eight from anywhere on Earth.'
                 : isAsteroidPage
@@ -1952,6 +2010,8 @@ function App() {
             <p className="share-hashtags">
               {isNuclearPage
                 ? 'Suggested hashtags: #NuclearWeapons #BlastRadius #Science #History'
+                : isPlanetSkyPage
+                ? 'Suggested hashtags: #NightSky #Planets #Astronomy #Space'
                 : isAnalemmaPage
                 ? 'Suggested hashtags: #Analemma #Astronomy #SunPosition #Science'
                 : isAsteroidPage

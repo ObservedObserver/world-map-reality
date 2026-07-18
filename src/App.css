@@ -2981,3 +2981,91 @@
   .analemma-segmented-control { flex-direction: column; }
   .analemma-stat-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   If the Moon Were Replaced by Planets (Night Sky Simulator)
+   ============================================================ */
+.planet-sky-layout { display: grid; gap: 24px; }
+
+.planet-sky-stage,
+.planet-sky-panel {
+  border: 1px solid rgba(248, 245, 239, 0.15);
+  border-radius: 24px;
+  background: radial-gradient(circle at 82% 8%, rgba(246, 196, 83, 0.11), transparent 34%), rgba(8, 17, 32, 0.82);
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.9s ease 0.18s both;
+}
+
+.planet-sky-stage { overflow: hidden; padding: 0; }
+.planet-sky-viewport { position: relative; height: clamp(420px, 64vh, 660px); background: #04060c; }
+.planet-sky-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.planet-sky-canvas:active { cursor: grabbing; }
+
+.planet-sky-hud { position: absolute; top: 14px; left: 14px; display: grid; gap: 4px; padding: 10px 14px; border: 1px solid rgba(248, 245, 239, 0.16); border-radius: 14px; background: rgba(4, 10, 20, 0.72); backdrop-filter: blur(6px); pointer-events: none; }
+.planet-sky-hud-name { display: inline-flex; align-items: center; gap: 6px; color: #ffe2a1; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.planet-sky-hud-size { color: #f2f6fc; font-family: var(--font-display); font-size: 1.15rem; }
+.planet-sky-hud-size small { color: var(--mist); font-family: var(--font-body); font-size: 0.78rem; }
+
+.planet-sky-warning { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: min(460px, calc(100% - 28px)); padding: 10px 14px; border: 1px solid rgba(255, 154, 86, 0.5); border-radius: 12px; background: rgba(52, 20, 5, 0.82); color: #ffd9b8; font-size: 0.82rem; text-align: center; pointer-events: none; }
+.planet-sky-warning em { font-style: normal; font-weight: 700; }
+
+.planet-sky-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(4, 10, 20, 0.6); color: rgba(248, 245, 239, 0.55); font-size: 0.72rem; white-space: nowrap; pointer-events: none; }
+
+.planet-sky-panel { display: grid; gap: 16px; padding: 22px; animation-delay: 0.26s; }
+
+.planet-sky-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.planet-sky-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 8px; border: 1px solid rgba(248, 245, 239, 0.16); border-radius: 999px; background: rgba(8, 18, 34, 0.72); color: var(--mist); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease; }
+.planet-sky-chip:hover,
+.planet-sky-chip.is-active { border-color: rgba(246, 196, 83, 0.62); background: rgba(246, 196, 83, 0.14); color: #fff0c7; }
+.planet-sky-chip-orb { width: 24px; height: 24px; border-radius: 50%; background-size: cover; background-position: 25% center; box-shadow: inset -5px -3px 7px rgba(0, 0, 0, 0.65); flex: none; }
+
+.planet-sky-blurb { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; border: 1px solid rgba(148, 190, 224, 0.18); border-radius: 12px; background: rgba(10, 25, 45, 0.5); color: var(--mist); font-size: 0.86rem; }
+.planet-sky-blurb svg { flex: none; color: #9cc4e8; }
+
+.planet-sky-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.planet-sky-control { min-width: 0; padding: 13px 14px; border: 1px solid rgba(248, 245, 239, 0.13); border-radius: 14px; background: rgba(10, 25, 45, 0.66); }
+.planet-sky-control label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 9px; color: var(--mist); font-size: 0.82rem; }
+.planet-sky-control label span { display: inline-flex; align-items: center; gap: 6px; }
+.planet-sky-control label strong { color: #fff4d6; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85rem; white-space: nowrap; }
+.planet-sky-control input[type='range'] { width: 100%; accent-color: #f6c453; }
+.planet-sky-control input[type='range']:disabled { opacity: 0.35; }
+.planet-sky-slider-scale { display: flex; justify-content: space-between; margin-top: 2px; color: rgba(248, 245, 239, 0.4); font-size: 0.66rem; }
+
+.planet-sky-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.planet-sky-stat { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid rgba(248, 245, 239, 0.12); border-radius: 12px; background: rgba(10, 25, 45, 0.58); }
+.planet-sky-stat span,
+.planet-sky-stat small { color: var(--mist-strong); font-size: 0.71rem; }
+.planet-sky-stat span { text-transform: uppercase; letter-spacing: 0.06em; }
+.planet-sky-stat strong { color: #fff3d4; font-family: var(--font-display); font-size: 1.15rem; }
+
+.planet-sky-method-note { margin: 0; padding: 0 8px; color: var(--mist-strong); font-size: 0.77rem; text-align: center; }
+
+.planet-sky-table-wrap { overflow-x: auto; border: 1px solid rgba(248, 245, 239, 0.13); border-radius: 14px; }
+.planet-sky-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.86rem; }
+.planet-sky-table th,
+.planet-sky-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(248, 245, 239, 0.09); }
+.planet-sky-table thead th { color: #ffe2a1; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(10, 25, 45, 0.7); }
+.planet-sky-table tbody th { color: #f2f6fc; font-weight: 600; }
+.planet-sky-table tbody td { color: var(--mist); }
+.planet-sky-table tbody tr:last-child th,
+.planet-sky-table tbody tr:last-child td { border-bottom: none; }
+
+@media (max-width: 940px) {
+  .planet-sky-controls { grid-template-columns: 1fr; }
+  .planet-sky-stats { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 680px) {
+  .planet-sky-panel { padding: 16px; border-radius: 18px; }
+  .planet-sky-viewport { height: clamp(340px, 58vh, 520px); }
+  .planet-sky-hud { top: 10px; left: 10px; padding: 8px 11px; }
+  .planet-sky-hud-size { font-size: 0.98rem; }
+  .planet-sky-warning { top: auto; bottom: 44px; }
+}
+
+@media (max-width: 430px) {
+  .planet-sky-stats { grid-template-columns: 1fr; }
+  .planet-sky-hint { display: none; }
+}
+
+.planet-sky-hud-fov { color: rgba(248, 245, 239, 0.5); font-size: 0.7rem; }

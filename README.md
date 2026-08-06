@@ -77,6 +77,18 @@ The prerender script assumes subpath deployment under:
 
 - `/tool/true-size-map/`
 
+## Analytics
+
+Vercel Web Analytics records page views through `SiteAnalytics`. Clicks from
+this tool to other `runcell.dev` pages are recorded as the custom event
+`runcell_outbound_click` with two properties:
+
+- `destination`: destination hostname and path
+- `placement`: `tool_nav_brand`, `map_header_home`, or `tool_footer_credit`
+
+Links within `/tool/true-size-map/*` are excluded so navigation between this
+tool's pages is not counted as traffic sent to the main Runcell site.
+
 ## Sea-level data source
 
 The sea-level simulator now runs on `maplibre-gl` with public, token-free sources:

@@ -96,6 +96,8 @@ const MapView = ({
             className="github-button"
             href="https://www.runcell.dev"
             target="_blank"
+            rel="noopener noreferrer"
+            data-analytics-location="map_header_home"
           >
             Home
           </a>

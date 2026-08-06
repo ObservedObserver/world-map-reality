@@ -1637,6 +1637,7 @@ function App() {
           href="https://www.runcell.dev"
           target="_blank"
           rel="noopener noreferrer"
+          data-analytics-location="tool_nav_brand"
           aria-label="Visit Runcell"
         >
           <span className="page-tabs-brand-mark" aria-hidden="true">
@@ -2041,7 +2042,12 @@ function App() {
       <footer className="app-footer">
         <p>
           Built with {' '}
-          <a href="https://www.runcell.dev" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.runcell.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-analytics-location="tool_footer_credit"
+          >
             runcell
           </a>
         </p>

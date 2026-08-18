@@ -21,7 +21,7 @@
   },
   "pages": {
     "map": {
-      "title": "True Size of Countries — Mercator Map Playground",
+      "title": "True Size of Countries — Drag & Compare on a Mercator Map",
       "description": "Drag countries on a Mercator world map to see how latitude changes their true scale in real time.",
       "canonical": "https://www.runcell.dev/tool/true-size-map"
     },

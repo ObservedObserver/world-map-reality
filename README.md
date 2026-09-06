@@ -77,6 +77,23 @@ The prerender script assumes subpath deployment under:
 
 - `/tool/true-size-map/`
 
+## Equal Earth projection tool
+
+The independent `/tool/true-size-map/equal-earth-projection` page compares
+Equal Earth and Mercator at a shared unit-sphere area scale. It includes country
+and Africa comparisons, whole-polygon distortion ratios, a latitude experiment,
+map-center presets, and shareable query parameters. The existing custom Mercator
+projection guide links to it.
+
+The tracked dataset in `public/maps/` is world-atlas 2.0.2, derived from Natural
+Earth 4.1.0. Both projections and all numerical results use those same outlines.
+Results are approximate spherical outline areas, not official national totals.
+Mercator results are withheld for regions clipped by the ±85.0511° limit.
+
+Run `yarn test:equal-earth` with Node 22.6+ for projection, area, antimeridian,
+polar clipping, and share-state tests. `yarn build` also checks each prerendered
+route's title and canonical identity.
+
 ## Analytics
 
 Vercel Web Analytics records page views through `SiteAnalytics`. Clicks from

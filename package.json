@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:equal-earth": "node --experimental-strip-types --test scripts/equal-earth.test.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr --emptyOutDir true && node scripts/prerender.mjs",
     "build:spa": "tsc -b && vite build",

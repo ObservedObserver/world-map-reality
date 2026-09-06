@@ -2,6 +2,7 @@
   "siteBaseUrl": "https://www.runcell.dev/tool/true-size-map",
   "siteImageUrl": "https://www.runcell.dev/tool/true-size-map/true-size-of-country.jpg",
   "routes": {
+    "/equal-earth-projection": "equalEarth",
     "/": "map",
     "/country-size-on-planets": "globe",
     "/custom-mercator-projection": "equator",
@@ -20,6 +21,11 @@
     "/compare/japan-vs-united-states": "compare:japan-vs-united-states"
   },
   "pages": {
+    "equalEarth": {
+      "title": "Equal Earth Projection: Interactive Map vs Mercator",
+      "description": "Explore the Equal Earth projection with an interactive world map. Compare country areas with Mercator, see distortion ratios, and move a circle across latitudes.",
+      "canonical": "https://www.runcell.dev/tool/true-size-map/equal-earth-projection"
+    },
     "map": {
       "title": "True Size of Countries — Mercator Map Playground",
       "description": "Drag countries on a Mercator world map to see how latitude changes their true scale in real time.",

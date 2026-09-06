@@ -38,6 +38,9 @@ const EquatorSeoContent = () => {
       <section aria-labelledby="equator-tools-title">
         <h3 id="equator-tools-title">More interactive map tools</h3>
         <div className="seo-link-grid">
+          <a href="/tool/true-size-map/equal-earth-projection">
+            Equal Earth Projection vs Mercator
+          </a>
           <a href="/tool/true-size-map">True Size of Countries Map</a>
           <a href="/tool/true-size-map/country-size-on-planets">
             Country Size on Other Planets

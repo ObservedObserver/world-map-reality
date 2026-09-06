@@ -28,6 +28,55 @@
 
 ---
 
+## 2026-09-06：独立 Equal Earth 工具页，小范围增量发布
+
+### 发布范围与决定
+
+- 新增 `/tool/true-size-map/equal-earth-projection`，独立 title、description、H1、canonical、OG/Twitter 和 WebApplication/BreadcrumbList。静态生成说明、FAQ 与来源；地图按需加载。查询参数只保存交互状态，canonical 始终指向无参数 URL。
+- 新页提供 Equal Earth / Mercator 双地图、国家与非洲选择、完整轮廓面积与放大倍数、固定面积圆的纬度实验、重定心、网格与分享链接。两图保持同一单位球面投影比例尺，避免分别 fitSize 造成任意面积缩放。
+- 现有页面只在低流量 `/custom-mercator-projection` 的相关工具区增加一条入口，并添加新页 sitemap 条目。根页及共享导航、既有 title/H1、主要正文、canonical、robots、重定向、国际化均不变。对比改动前后的 SSR 输出，16 个已有页面 headTags 逐字一致，15 页 appHtml 逐字一致，Mercator 页仅多出这一条链接。
+- **决定：允许这个独立单页和一条低流量页面内链的小范围增量发布。继续暂停根页高风险实验、全站导航推广和批量扩展。** 本次按流量和实际输出评估为低风险增量，不以 diff 行数为依据，也不把新页上线当作根页排名因果实验。新页没有历史排名基线。
+
+### Google 官方状态与相关政策
+
+- 规划阶段在 **2026-09-06 约 11:14–11:25 PDT，America/Los_Angeles** 查询 [Search Status Dashboard](https://status.search.google.com/)、[排名历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)、[Search Central 公告](https://developers.google.com/search/blog)及[文档更新](https://developers.google.com/search/updates)。Dashboard 返回更新时间为 11:14 PDT；无进行中事件。
+- **2026-09-06 11:39:48 PDT** 再次直接获取官方 [JSON 事件记录](https://status.search.google.com/incidents.json)，并随后复查上述 Dashboard、排名历史和文档更新。最近 30 天仅有 [August 2026 spam update](https://status.search.google.com/incidents/LEubPCm2octf2uMqCFKE)，开始 **8/18 09:27 PDT**，结束 **8/21 01:49 PDT**，没有 9 月排名更新或已公告的下一次 rollout。
+- [8/28 网站声誉政策公告](https://developers.google.com/search/blog/2026/08/update-site-reputation-policy)的 EEA 执行调整自 **8/30** 起生效，针对第三方内容借用宿主网站声誉及相关手动措施。此次为本站自有的地图工具与原创说明，不引入第三方代发、赞助栏目或借用声誉的内容，判断不处于与本次改动相关的该政策执行窗口；这不是对本站有无手动措施的审计结论。
+- [返回按钮劫持政策](https://developers.google.com/search/blog/2026/04/back-button-hijacking)自 **6/15** 执行。本页用 replace 更新当前交互参数，不插入额外历史页面，不拦截 Back。新页未增加广告或第三方执行脚本。
+- [5/8 文档记录](https://developers.google.com/search/updates)说明 FAQ 富结果于 5/7 停止展示。保留面向读者的 FAQ，不新增 FAQPage 或承诺富结果。
+
+### GSC 已最终确认的数据与解释边界
+
+使用指定 GSC skill 的凭证与 Search Analytics API，property 为 `sc-domain:runcell.dev`，`type=web`、`dataState=final`。请求 8/22–9/5，最后返回 **2026-09-04**；9/5 不可用，未计为零。查询了根页 date、date×query、date×country、date×device 和子页 date×page。
+
+| 窗口或日期 | 完整数据日 | 根页点击/日 | 展示/日 | 展示加权位次 |
+|---|---:|---:|---:|---:|
+| 8/22–8/29，更新后且标题回滚前 | 8 | 34.1 | 10,010 | 8.32 |
+| 8/31–9/2，标题回滚后的短窗口 | 3 | 119.0 | 23,396 | 6.05 |
+| 9/3 | 1 | 145 | 32,673 | 6.06 |
+| 9/4 | 1 | 270 | 48,524 | 6.87 |
+
+- 更新结束后已有 14 个完整数据日，8/22–8/29 曾有 8 日低位平台。但当前根页不能称为稳定新基线：8/30 标题回滚后恢复，9/3–9/4 再次出现量级变化。新闻需求是合理解释之一，尚未与 Google 排名变化分离，因此不放行根页 SEO 实验。
+- 固定 `true size map` 查询 8/31–9/2 日展示 1,167–1,245、位次 5.2–5.3；9/4 为 2,939 / 6.7。`true size of countries` 同期 667–781 / 4.2–4.4；9/4 为 1,662 / 5.4。
+- 美国 8/31–9/2 日展示 3,545–3,876、位次 6.5–6.8；9/4 为 4,842 / 8.1。英国同期 993–1,070 / 6.9–7.1；9/4 为 3,071 / 8.3。德国和巴西已查询。桌面 9/4 为 18,011 / 6.7，移动为 23,718 / 6.9，均较前几日增量。不能只看整页平均位次作因果判断。
+- 唯一增加入口的 Mercator 子页 8/22–9/4 为每日 9–38 展示、0–4 点击，样本小，无法可靠拆出稳定 query/country/device 基线。它的暴露远低于根页，且仅加入相关工具链接，标题与正文说明均保留。
+- 海平面页同期每日 1,256–1,928 展示、位次 5.0–6.8。Greenland vs Africa 子页 9/4 展示升至 1,127，之前多为 120–256。子页数据只用于描述变化，不能排除 Google 对根页的单独影响。
+- 该窗口 `equal earth` 查询在全站仅返回 3 条、各 1 次展示，没有已经承接该意图的成熟页面。新页通过可用工具和原创解释服务这个独立意图。
+- 本地原始响应留在 `/tmp/equal-earth-gsc-2026-09-06.json`，未提交凭证或逐条查询数据。上表保存可长期复查的汇总。既有 worklog 的标题主因与指纹机制说法仍需按顶部政策视为假说。
+
+### 实现与验收
+
+- 使用 D3 `geoEqualEarth` / `geoMercator`，完整球面轮廓面积与投影平面面积相除。世界数据为固定 world-atlas 2.0.2 / Natural Earth 4.1.0，数据和许可随仓库发布，无运行时外部地图数据依赖。明确近似面积、边界来源与极区裁剪限制。
+- 9 项数学与状态测试通过：球冠理论面积、Equal Earth 面积守恒、Mercator 局部公式、完整格陵兰轮廓、全部 178 个国家/地区及非洲选项、南极裁剪、日期变更线、正反算与分享参数。数据中的非洲轮廓约 30.04 million km²，格陵兰约 2.19 million km²，比例约 13.72；格陵兰 Mercator 放大约 16.54×。
+- TypeScript、变更文件 ESLint、生产构建及全部 17 个路由预渲染检查通过。旧页面 SSR 对照见上文。地图和国家数据只在新页加载；没有增加依赖。
+- 使用真实浏览器验收桌面与 390px 手机视口：选择/预设、交换/重置、地图重定心、网格、键盘滑块、分享复制及带参数直接加载。手机无横向溢出，南极不显示误导性的完整 Mercator 倍数。
+- 本地 `vite preview` 对不带结尾斜杠的目录路由会返回根页 fallback，导致 React hydration 报错。确认生成的 `equal-earth-projection/index.html` 正确后，使用目录 URL 验收实际构建产物；生产 Vercel 的 clean URL 需要在推送后另行核实，不能把本地 SPA fallback 当成生产路由证据。
+- 最终构建目录 URL 的带参数首访没有新增 React/runtime 错误；故障注入确认地图数据请求失败时展示可重试错误。小地区比值使用有效数字，Luxembourg / Africa 为约 0.0000801×，不会四舍五入成零。
+- **推送前最终复核：2026-09-06 11:50:30 PDT**，直接请求 Dashboard、排名历史、文档更新均为 HTTP 200，Dashboard 无事件，官方 JSON 中近 30 天仍仅有已结束的 August spam update。维持上述小范围发布决定。
+- 后续复查须重新查询 Google 官方状态；若宣布更新，停止增加内链和扩展页面并记录重叠。流量变化不得直接归因于本工具。此次未建立周期自动监控。
+
+---
+
 ## 2026-09-02 复盘 v2：实验 3 结果、新证据与对初版结论的逐条修正
 
 > 本节是当前有效版本。下方 8/30 初版复盘按本日志惯例保留原文，其中被数据推翻或需降级的表述已就地标注 **[修正 9/2]**，对应依据在本节 §3。

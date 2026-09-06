@@ -98,6 +98,7 @@ import {
   SUN_ANALEMMA_FAQS,
 } from './seo'
 import seoMeta from './seo-meta.json'
+import EqualEarthPage from './components/EqualEarthPage'
 import './App.css'
 
 const TRUE_SIZE_GLOBE_PATH = '/country-size-on-planets'
@@ -2057,4 +2058,9 @@ function App() {
   )
 }
 
-export default App
+export default function AppRouter() {
+  const location = useLocation()
+  return location.pathname.replace(/\/$/, '') === '/equal-earth-projection'
+    ? <EqualEarthPage />
+    : <App />
+}

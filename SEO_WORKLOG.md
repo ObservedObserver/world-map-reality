@@ -73,6 +73,7 @@
 - 本地 `vite preview` 对不带结尾斜杠的目录路由会返回根页 fallback，导致 React hydration 报错。确认生成的 `equal-earth-projection/index.html` 正确后，使用目录 URL 验收实际构建产物；生产 Vercel 的 clean URL 需要在推送后另行核实，不能把本地 SPA fallback 当成生产路由证据。
 - 最终构建目录 URL 的带参数首访没有新增 React/runtime 错误；故障注入确认地图数据请求失败时展示可重试错误。小地区比值使用有效数字，Luxembourg / Africa 为约 0.0000801×，不会四舍五入成零。
 - **推送前最终复核：2026-09-06 11:50:30 PDT**，直接请求 Dashboard、排名历史、文档更新均为 HTTP 200，Dashboard 无事件，官方 JSON 中近 30 天仍仅有已结束的 August spam update。维持上述小范围发布决定。
+- **上线验收：2026-09-06 11:54 PDT**。`feat: add Equal Earth projection comparison tool` 已于 11:51 PDT 提交并推送 main，Vercel GitHub 状态为 success。不带结尾斜杠的正式地址返回 HTTP 200，title/H1/canonical 正确；浏览器渲染两个地图，新增 runtime/hydration 错误为 0。线上地图数据与提交文件逐字一致，sitemap 与 Mercator 页入口均生效。故障注入后的 Reload map 也已确认恢复两个地图。
 - 后续复查须重新查询 Google 官方状态；若宣布更新，停止增加内链和扩展页面并记录重叠。流量变化不得直接归因于本工具。此次未建立周期自动监控。
 
 ---

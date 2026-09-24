@@ -1856,7 +1856,22 @@
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(248, 245, 239, 0.18);
-  background: rgba(7, 15, 28, 0.7);
+  /* Space behind the 3D globe; export draws the same backdrop. */
+  background:
+    radial-gradient(
+      circle farthest-corner at 50% 55%,
+      rgba(38, 76, 140, 0.24) 0%,
+      rgba(38, 76, 140, 0) 62%
+    ),
+    #03070e;
+}
+
+.sea-level-starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .sea-level-map {

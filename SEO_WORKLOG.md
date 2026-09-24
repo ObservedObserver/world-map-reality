@@ -28,6 +28,16 @@
 
 ---
 
+## 2026-09-24：海平面地图视觉更新发布门槛
+
+- **2026-09-24 07:33–07:40 PDT，America/Los_Angeles** 复查 [Google Search Status Dashboard](https://status.search.google.com/)（无事件，状态页最后更新 07:33 PDT）、[官方 JSON 事件记录](https://status.search.google.com/incidents.json)、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)、[Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)。最近一次排名更新仍为 [August 2026 spam update](https://status.search.google.com/incidents/LEubPCm2octf2uMqCFKE)，8/18 09:27–8/21 01:49 PDT，已结束；无进行中或已预告的更新。9 月公告为 Search Console 多模态报告和 Search Central Live 活动。文档更新中，9/24 VideoObject 的 `creator`/`interactionStatistic`、9/18 本地商家查询、9/16 Search profile 徽章均与本次改动无关；本页结构化数据只有 WebApplication 和 BreadcrumbList。8/28 EEA 网站声誉政策针对第三方内容，本页不涉及。
+- **影响范围**：仍是 `/tool/true-size-map/sea-level-rise-simulator` 一个页面，只改客户端地图渲染：水体按深度着色并保留 NASA 影像的海底纹理，加地形晕渲，新淹没陆地与海平面下降后露出的海床改用浅海色与沙土色；3D 地形只在“卫星详图 + 3D”开启；高分屏默认视图加载下一级自建影像瓦片；3D 地球加大气光晕和星空背景；导出图补同样背景并修正署名行距。title、H1、description、canonical、结构化数据、可见文案和内链均未改。地图组件只在浏览器渲染，预渲染 HTML 仍是加载占位，除资源哈希外不变。高分屏默认视图约多 0.5 MB 自建影像，JS 分块约多 3 KB，无新增第三方请求。
+- **GSC 最终数据**：同一方法，使用指定 GSC skill 的凭证查询 `sc-domain:runcell.dev`，`type=web`、`dataState=final`、精确 page 过滤。07:40 查询 9/8–9/24，最新返回仍为 **9/21**；9/22–9/23 不可用，未计零。基线与 06:08 记录一致：9/8–9/14 为 1,811 点击、12,160 展示、位次 5.71；9/15–9/21 为 1,860 点击、10,782 展示、位次 5.20；9/19–9/21 日点击 352、308、285。固定分组同上一条记录：`sea level rise map` 点击 210→220、位次 3.94→3.54，`sea level rise simulator` 101→111、1.81→1.72；美国点击 306→307；桌面 432→452、移动 519→554；澳大利亚 73→40 仍是需观察的局部波动。
+- **重叠说明**：同页上一次发布（上一条记录）于 06:11 PDT 部署成功，改的是默认影像与 DEM，尚无发布后的 GSC 数据。本次在约 1.5 小时后再改同页地图外观，此后该页的流量变化无法在两次发布之间拆分；两次都不是标题等 SEO 信号实验，也不能据此推断任何排名机制。
+- **决定：放行本次单页 UI 发布**，用户已确认改动效果并要求上线。部署后核对线上页面、瓦片与脚本；后续复查流量须重新查询 Google 官方状态。
+
+---
+
 ## 2026-09-24：海平面概览发布门槛
 
 - **2026-09-24 约 06:08 PDT，America/Los_Angeles** 复查 [Google Search Status Dashboard](https://status.search.google.com/)（无事件，状态页最后更新 05:58 PDT）、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)、[Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)。最近一次排名更新仍为 [August 2026 spam update](https://status.search.google.com/incidents/LEubPCm2octf2uMqCFKE)，8/18 09:27–8/21 01:49 PDT，已结束；未见进行中或已预告的下一次排名更新。9/24 新公告为 Search Console 多模态搜索表现报告，自当天起全球推出，涉及报告数据，不是本次地图 UI 的排名政策或执行窗口。9 月文档更新涉及本地商家、Search profile 和地区搜索体验；8/28 EEA 网站声誉政策调整针对第三方内容，均不涉及本站自有地图工具。

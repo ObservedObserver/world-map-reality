@@ -13,6 +13,7 @@ const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
 const SATELLITE_SOURCE_ID = 'satellite-source'
 const TERRAIN_SOURCE_ID = 'terrain-source'
 const SATELLITE_LAYER_ID = 'satellite-layer'
+const RELIEF_LAYER_ID = 'terrain-relief'
 const WATERMARK_TEXT =
   'runcell.dev/tool/true-size-map/sea-level-rise-simulator'
 
@@ -23,8 +24,54 @@ const MODE_TRANSITION_MS = 650
 
 type MapViewMode = '2d' | '3d'
 type DataView = 'overview' | 'detail'
+type Rgb = readonly [number, number, number]
+// Distance in meters from the waterline, color, and alpha.
+type ColorStop = readonly [number, Rgb, number]
 
 const OVERVIEW_TILE_BASE = `${import.meta.env.BASE_URL}maps/sea-level-overview`
+
+// Present-day sea, by depth. Tones follow the NASA Blue Marble bathymetry,
+// so the overlay keeps the imagery's own seafloor detail visible.
+const OCEAN_STOPS: ColorStop[] = [
+  [0, [34, 82, 136], 0.9],
+  [15, [32, 78, 132], 0.9],
+  [60, [28, 71, 126], 0.9],
+  [140, [26, 67, 122], 0.84],
+  [220, [25, 64, 119], 0.6],
+  [400, [22, 58, 112], 0.46],
+  [1500, [16, 46, 98], 0.45],
+  [4000, [12, 36, 82], 0.45],
+  [11000, [10, 30, 72], 0.45],
+]
+// Newly flooded land, by water depth: bright shallows at the new shoreline.
+const FLOOD_STOPS: ColorStop[] = [
+  [0, [104, 184, 200], 0.66],
+  [8, [78, 160, 188], 0.72],
+  [40, [48, 122, 164], 0.8],
+  [120, [34, 90, 144], 0.86],
+]
+// Seabed exposed by a lower sea, by height above the new waterline.
+const SEABED_STOPS: ColorStop[] = [
+  [0, [150, 132, 92], 0.86],
+  [25, [132, 116, 76], 0.86],
+  [150, [118, 106, 72], 0.86],
+]
+
+// Seeded so the star field behind the globe is the same on every visit.
+const STAR_TILE_SIZE = 480
+const STARS = (() => {
+  let seed = 20260924
+  const random = () => {
+    seed = (seed * 16807) % 2147483647
+    return seed / 2147483647
+  }
+  return Array.from({ length: 64 }, () => ({
+    x: Math.round(random() * STAR_TILE_SIZE * 10) / 10,
+    y: Math.round(random() * STAR_TILE_SIZE * 10) / 10,
+    radius: Math.round((0.4 + random() ** 4 * 0.9) * 100) / 100,
+    alpha: Math.round((0.2 + random() * 0.55) * 100) / 100,
+  }))
+})()
 
 const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
   version: 8,
@@ -34,7 +81,9 @@ const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
       tiles: view === 'overview'
         ? [`${OVERVIEW_TILE_BASE}/imagery/{z}/{x}/{y}.jpg`]
         : ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
+      // On high-density screens, request the next zoom level of the small
+      // self-hosted set so the default view is not upscaled.
+      tileSize: view === 'overview' && window.devicePixelRatio > 1 ? 128 : 256,
       attribution: view === 'overview'
         ? '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/" target="_blank" rel="noopener noreferrer">NASA Earth Observatory</a>'
         : 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
@@ -52,34 +101,152 @@ const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
       maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 15,
     },
   },
+  // A thin lit atmosphere rim around the 3D globe. The dark sky colors only
+  // show on steeply tilted close-ups.
+  sky: {
+    'sky-color': '#07111f',
+    'horizon-color': '#12243c',
+    'fog-color': '#07111f',
+    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.55, 4, 0.55, 6, 0],
+  },
+  light: {
+    anchor: 'viewport',
+    position: [1.5, 330, 30],
+  },
   layers: [
     {
       id: SATELLITE_LAYER_ID,
       type: 'raster',
       source: SATELLITE_SOURCE_ID,
+      paint: view === 'overview'
+        ? {
+            'raster-resampling': 'linear',
+            'raster-saturation': 0.12,
+            'raster-contrast': 0.06,
+          }
+        : {
+            'raster-resampling': 'linear',
+          },
+    },
+    {
+      id: RELIEF_LAYER_ID,
+      type: 'hillshade',
+      source: TERRAIN_SOURCE_ID,
       paint: {
-        'raster-resampling': 'linear',
+        'hillshade-method': 'multidirectional',
+        'hillshade-illumination-direction': [315, 270],
+        'hillshade-illumination-altitude': [35, 50],
+        'hillshade-shadow-color': ['rgba(6, 12, 28, 0.8)', 'rgba(6, 12, 28, 0.5)'],
+        'hillshade-highlight-color': [
+          'rgba(255, 246, 224, 0.26)',
+          'rgba(255, 246, 224, 0.1)',
+        ],
+        // Satellite photos carry their own shadows once zoomed in.
+        'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 4, 1, 6, 0.6, 10, 0.35],
       },
     },
   ],
 })
 
+function sampleColorStops(stops: ColorStop[], distance: number): [Rgb, number] {
+  const next = stops.findIndex(([stopDistance]) => stopDistance >= distance)
+  if (next <= 0) {
+    const [, color, alpha] = stops[next === 0 ? 0 : stops.length - 1]
+    return [color, alpha]
+  }
+  const [fromDistance, fromColor, fromAlpha] = stops[next - 1]
+  const [toDistance, toColor, toAlpha] = stops[next]
+  const t = (distance - fromDistance) / (toDistance - fromDistance)
+  const channel = (index: number) =>
+    Math.round(fromColor[index] + (toColor[index] - fromColor[index]) * t)
+  return [
+    [channel(0), channel(1), channel(2)],
+    Math.round((fromAlpha + (toAlpha - fromAlpha) * t) * 1000) / 1000,
+  ]
+}
+
 function buildFloodExpression(
   seaLevel: number
 ): maplibregl.ExpressionSpecification {
-  return [
-    'interpolate',
-    ['linear'],
-    ['elevation'],
-    -12000,
-    'rgba(28, 121, 255, 0.66)',
-    seaLevel - 0.001,
-    'rgba(28, 121, 255, 0.66)',
-    seaLevel,
-    'rgba(0, 0, 0, 0)',
-    9000,
-    'rgba(0, 0, 0, 0)',
-  ] as maplibregl.ExpressionSpecification
+  const stops: Array<number | string> = []
+  const addStop = (elevation: number, [[r, g, b], alpha]: readonly [Rgb, number]) => {
+    stops.push(elevation, `rgba(${r}, ${g}, ${b}, ${alpha})`)
+  }
+  const clear = [[0, 0, 0], 0] as const
+  // A rising sea keeps today's seafloor colors; a falling sea shifts them down.
+  const waterline = Math.min(seaLevel, 0)
+
+  for (const [depth, color, alpha] of [...OCEAN_STOPS].reverse()) {
+    addStop(waterline - Math.max(depth, 0.001), [color, alpha])
+  }
+
+  if (seaLevel > 0) {
+    addStop(0, sampleColorStops(FLOOD_STOPS, seaLevel))
+    for (const [depth, color, alpha] of [...FLOOD_STOPS].reverse()) {
+      const elevation = seaLevel - depth
+      if (elevation > 0 && elevation < seaLevel - 0.001) {
+        addStop(elevation, [color, alpha])
+      }
+    }
+    addStop(seaLevel - 0.001, sampleColorStops(FLOOD_STOPS, 0))
+    addStop(seaLevel, clear)
+  } else if (seaLevel < 0) {
+    addStop(seaLevel, sampleColorStops(SEABED_STOPS, 0))
+    for (const [height, color, alpha] of SEABED_STOPS) {
+      const elevation = seaLevel + height
+      if (elevation > seaLevel && elevation < -0.001) {
+        addStop(elevation, [color, alpha])
+      }
+    }
+    addStop(-0.001, sampleColorStops(SEABED_STOPS, -seaLevel))
+    addStop(0, clear)
+  } else {
+    addStop(0, clear)
+  }
+  addStop(9000, clear)
+
+  return ['interpolate', ['linear'], ['elevation'], ...stops] as maplibregl.ExpressionSpecification
+}
+
+function paintSpaceBackdrop(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  scale: number
+) {
+  context.fillStyle = '#03070e'
+  context.fillRect(0, 0, width, height)
+  // Matches the map shell's CSS gradient (farthest corner, 62%).
+  const glow = context.createRadialGradient(
+    width / 2,
+    height * 0.55,
+    0,
+    width / 2,
+    height * 0.55,
+    Math.hypot(width / 2, height * 0.55) * 0.62
+  )
+  glow.addColorStop(0, 'rgba(38, 76, 140, 0.24)')
+  glow.addColorStop(1, 'rgba(38, 76, 140, 0)')
+  context.fillStyle = glow
+  context.fillRect(0, 0, width, height)
+
+  const tile = STAR_TILE_SIZE * scale
+  for (let offsetY = 0; offsetY < height; offsetY += tile) {
+    for (let offsetX = 0; offsetX < width; offsetX += tile) {
+      for (const star of STARS) {
+        context.fillStyle = `rgba(255, 255, 255, ${star.alpha})`
+        context.beginPath()
+        context.arc(
+          offsetX + star.x * scale,
+          offsetY + star.y * scale,
+          star.radius * scale,
+          0,
+          Math.PI * 2
+        )
+        context.fill()
+      }
+    }
+  }
 }
 
 function shouldIgnoreError(message: string | undefined): boolean {
@@ -93,9 +260,16 @@ function shouldIgnoreError(message: string | undefined): boolean {
 function applyMapViewMode(
   map: maplibregl.Map,
   mode: MapViewMode,
+  view: DataView,
   animate = true
 ) {
   const duration = animate ? MODE_TRANSITION_MS : 0
+  // 3D terrain drapes every layer through an offscreen texture, which softens
+  // the imagery. Keep it for tilted close-ups, where the relief is visible.
+  const wantsTerrain = mode === '3d' && view === 'detail'
+  if (wantsTerrain !== Boolean(map.getTerrain())) {
+    map.setTerrain(wantsTerrain ? { source: TERRAIN_SOURCE_ID, exaggeration: 1 } : null)
+  }
   if (mode === '3d') {
     map.setProjection({ type: 'globe' })
     map.dragRotate.enable()
@@ -195,11 +369,7 @@ const SeaLevelRiseView = () => {
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
 
     const handleLoad = () => {
-      map.setTerrain({
-        source: TERRAIN_SOURCE_ID,
-        exaggeration: 1,
-      })
-      applyMapViewMode(map, mapViewModeRef.current, false)
+      applyMapViewMode(map, mapViewModeRef.current, dataView, false)
 
       map.addLayer({
         id: SEA_LEVEL_LAYER_ID,
@@ -245,7 +415,7 @@ const SeaLevelRiseView = () => {
       return
     }
     // Raster tiles can still be loading when the style already accepts updates.
-    applyMapViewMode(map, mapViewMode)
+    applyMapViewMode(map, mapViewMode, dataView)
   }, [dataView, mapReady, mapViewMode, readyMap])
 
   useEffect(() => {
@@ -293,6 +463,13 @@ const SeaLevelRiseView = () => {
       return null
     }
 
+    // The globe view leaves the canvas transparent around the planet.
+    paintSpaceBackdrop(
+      context,
+      exportCanvas.width,
+      exportCanvas.height,
+      mapCanvas.width / (mapCanvas.clientWidth || mapCanvas.width)
+    )
     context.drawImage(mapCanvas, 0, 0)
 
     const fontSize = Math.max(14, Math.round(exportCanvas.width * 0.018))
@@ -332,12 +509,21 @@ const SeaLevelRiseView = () => {
           'Imagery: Esri, Maxar, Earthstar Geographics',
           'GIS User Community; terrain: Mapzen and data contributors',
         ]
-    context.font = `${Math.max(10, Math.round(fontSize * 0.65))}px "IBM Plex Sans", sans-serif`
+    const creditFontSize = Math.max(10, Math.round(fontSize * 0.65))
+    context.font = `${creditFontSize}px "IBM Plex Sans", sans-serif`
     context.textAlign = 'left'
     context.textBaseline = 'top'
     context.fillStyle = 'rgba(248, 245, 239, 0.95)'
+    // Keeps the credits legible over ice and desert.
+    context.shadowColor = 'rgba(0, 0, 0, 0.65)'
+    context.shadowBlur = Math.round(creditFontSize * 0.3)
     credits.forEach((credit, index) => {
-      context.fillText(credit, 12, 12 + index * 16, exportCanvas.width - 24)
+      context.fillText(
+        credit,
+        12,
+        12 + index * Math.round(creditFontSize * 1.3),
+        exportCanvas.width - 24
+      )
     })
 
     return exportCanvas.toDataURL('image/png')
@@ -513,6 +699,28 @@ const SeaLevelRiseView = () => {
         </div>
 
         <div className="sea-level-map-shell">
+          <svg className="sea-level-starfield" aria-hidden="true" focusable="false">
+            <defs>
+              <pattern
+                id="sea-level-stars"
+                width={STAR_TILE_SIZE}
+                height={STAR_TILE_SIZE}
+                patternUnits="userSpaceOnUse"
+              >
+                {STARS.map((star, index) => (
+                  <circle
+                    key={index}
+                    cx={star.x}
+                    cy={star.y}
+                    r={star.radius}
+                    fill="#fff"
+                    fillOpacity={star.alpha}
+                  />
+                ))}
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#sea-level-stars)" />
+          </svg>
           <div ref={mapContainerRef} className="sea-level-map" />
           {mapError && <div className="sea-level-map-error">{mapError}</div>}
         </div>

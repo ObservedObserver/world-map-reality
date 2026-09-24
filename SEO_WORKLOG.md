@@ -28,6 +28,16 @@
 
 ---
 
+## 2026-09-24：海平面概览发布门槛
+
+- **2026-09-24 约 06:08 PDT，America/Los_Angeles** 复查 [Google Search Status Dashboard](https://status.search.google.com/)（无事件，状态页最后更新 05:58 PDT）、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)、[Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)。最近一次排名更新仍为 [August 2026 spam update](https://status.search.google.com/incidents/LEubPCm2octf2uMqCFKE)，8/18 09:27–8/21 01:49 PDT，已结束；未见进行中或已预告的下一次排名更新。9/24 新公告为 Search Console 多模态搜索表现报告，自当天起全球推出，涉及报告数据，不是本次地图 UI 的排名政策或执行窗口。9 月文档更新涉及本地商家、Search profile 和地区搜索体验；8/28 EEA 网站声誉政策调整针对第三方内容，均不涉及本站自有地图工具。
+- **影响范围**：现有 `/tool/true-size-map/sea-level-rise-simulator` 的地图默认影像、DEM、地图控件及一条数据 FAQ；详情视图保留按需使用 Esri 与远程 DEM。根页和其他工具页的共享 title、H1、canonical、robots、内链未改。按已有流量和主地图渲染范围，作为单页面有风险改动评估。
+- **GSC 最终数据**：使用指定 GSC skill 的凭证查询 `sc-domain:runcell.dev`，`type=web`、`dataState=final`、精确 page 过滤。06:08 再查 9/15–9/23，最新返回 **9/21**；9/22–9/23 不可用，未计零。8/21 更新结束后已有超过 7 个完整数据日。该页 9/8–9/14 为 1,811 点击、12,160 展示（日均 259/1,737）；9/15–9/21 为 1,860 点击、10,782 展示（日均 266/1,540），未见连续点击崩落。
+- **固定分组**：`sea level rise map` 两周为 1,515→1,289 展示、210→220 点击、位次 3.94→3.54；`sea level rise simulator` 为 228→210 展示、101→111 点击、位次 1.81→1.72。美国为 2,424→2,109 展示、306→307 点击；桌面 432→452 点击、移动 519→554 点击。澳大利亚展示 738→295、点击 73→40，是需观察的局部波动，不能把整体展示下降归因于本站或 Google。主要固定分组未显示同步排名下跌。
+- **决定：放行本次单页发布**，不同时扩展根页 SEO 实验。已修复切换时海平面与 2D/3D 偶尔不生效的竞态；生产构建、ESLint、连续切换和两种视图导出均通过，用户确认体验后同意合并。部署后核对线上地图与瓦片；后续流量观察须重新查官方公告，如有新更新，暂停后续 SEO 变更并记录重叠。
+
+---
+
 ## 2026-09-24：海平面页本地概览原型，未发布
 
 - 约 **03:42 PDT，America/Los_Angeles** 检查 [Google Search Status Dashboard](https://status.search.google.com/)、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)及 [Search Central 公告](https://developers.google.com/search/blog)。Dashboard 当时显示无事件，最后更新 03:25 PDT；排名历史中最近一次为 8/18–8/21 的 August 2026 spam update。9 月博客列表未见与本站地图工具相关的新政策公告。此检查只用于本地规划，不能代替上线前复核。

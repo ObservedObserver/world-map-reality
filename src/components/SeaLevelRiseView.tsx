@@ -12,6 +12,7 @@ const OVERVIEW_MAX_ZOOM = 4
 const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
 const SATELLITE_SOURCE_ID = 'satellite-source'
 const TERRAIN_SOURCE_ID = 'terrain-source'
+const TERRAIN_MESH_SOURCE_ID = 'terrain-mesh-source'
 const SATELLITE_LAYER_ID = 'satellite-layer'
 const RELIEF_LAYER_ID = 'terrain-relief'
 const WATERMARK_TEXT =
@@ -73,7 +74,24 @@ const STARS = (() => {
   }))
 })()
 
-const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
+const createElevationSource = (view: DataView) => ({
+  type: 'raster-dem' as const,
+  tiles: view === 'overview'
+    ? [`${OVERVIEW_TILE_BASE}/terrain/{z}/{x}/{y}.png`]
+    : ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  tileSize: 256,
+  encoding: 'terrarium' as const,
+  attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer">Mapzen terrain &amp; contributors</a>',
+  minzoom: 0,
+  maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 15,
+})
+
+// Every layer is in the initial style: adding one to a loaded elevation
+// source later makes MapLibre request all of its tiles again.
+const createMapStyle = (
+  view: DataView,
+  seaLevel: number
+): maplibregl.StyleSpecification => ({
   version: 8,
   sources: {
     [SATELLITE_SOURCE_ID]: {
@@ -89,17 +107,10 @@ const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
         : 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
       maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 18,
     },
-    [TERRAIN_SOURCE_ID]: {
-      type: 'raster-dem',
-      tiles: view === 'overview'
-        ? [`${OVERVIEW_TILE_BASE}/terrain/{z}/{x}/{y}.png`]
-        : ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      encoding: 'terrarium',
-      attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer">Mapzen terrain &amp; contributors</a>',
-      minzoom: 0,
-      maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 15,
-    },
+    [TERRAIN_SOURCE_ID]: createElevationSource(view),
+    // Separate copy for the 3D mesh, so turning it on does not reload the
+    // tiles the relief and water layers already use.
+    [TERRAIN_MESH_SOURCE_ID]: createElevationSource(view),
   },
   // A thin lit atmosphere rim around the 3D globe. The dark sky colors only
   // show on steeply tilted close-ups.
@@ -143,6 +154,15 @@ const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
         ],
         // Satellite photos carry their own shadows once zoomed in.
         'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 4, 1, 6, 0.6, 10, 0.35],
+      },
+    },
+    {
+      id: SEA_LEVEL_LAYER_ID,
+      type: 'color-relief',
+      source: TERRAIN_SOURCE_ID,
+      paint: {
+        'color-relief-color': buildFloodExpression(seaLevel),
+        'color-relief-opacity': 1,
       },
     },
   ],
@@ -268,7 +288,7 @@ function applyMapViewMode(
   // the imagery. Keep it for tilted close-ups, where the relief is visible.
   const wantsTerrain = mode === '3d' && view === 'detail'
   if (wantsTerrain !== Boolean(map.getTerrain())) {
-    map.setTerrain(wantsTerrain ? { source: TERRAIN_SOURCE_ID, exaggeration: 1 } : null)
+    map.setTerrain(wantsTerrain ? { source: TERRAIN_MESH_SOURCE_ID, exaggeration: 1 } : null)
   }
   if (mode === '3d') {
     map.setProjection({ type: 'globe' })
@@ -351,7 +371,7 @@ const SeaLevelRiseView = () => {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: createMapStyle(dataView),
+      style: createMapStyle(dataView, seaLevelRef.current),
       center: cameraRef.current.center,
       zoom: Math.min(cameraRef.current.zoom, dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18),
       maxZoom: dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18,
@@ -370,17 +390,6 @@ const SeaLevelRiseView = () => {
 
     const handleLoad = () => {
       applyMapViewMode(map, mapViewModeRef.current, dataView, false)
-
-      map.addLayer({
-        id: SEA_LEVEL_LAYER_ID,
-        type: 'color-relief',
-        source: TERRAIN_SOURCE_ID,
-        paint: {
-          'color-relief-color': buildFloodExpression(seaLevelRef.current),
-          'color-relief-opacity': 1,
-        },
-      })
-
       setReadyMap({ map, view: dataView })
     }
 

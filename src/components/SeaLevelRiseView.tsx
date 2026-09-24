@@ -7,6 +7,8 @@ const DEFAULT_SEA_LEVEL_METERS = 0
 const MIN_SEA_LEVEL_METERS = -5000
 const MAX_SEA_LEVEL_METERS = 5000
 const DEFAULT_MAP_VIEW_MODE = '2d'
+const DEFAULT_DATA_VIEW = 'overview'
+const OVERVIEW_MAX_ZOOM = 4
 const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
 const SATELLITE_SOURCE_ID = 'satellite-source'
 const TERRAIN_SOURCE_ID = 'terrain-source'
@@ -20,30 +22,34 @@ const GLOBE_BEARING_DEGREES = -14
 const MODE_TRANSITION_MS = 650
 
 type MapViewMode = '2d' | '3d'
+type DataView = 'overview' | 'detail'
 
-const MAP_STYLE: maplibregl.StyleSpecification = {
+const OVERVIEW_TILE_BASE = `${import.meta.env.BASE_URL}maps/sea-level-overview`
+
+const createMapStyle = (view: DataView): maplibregl.StyleSpecification => ({
   version: 8,
   sources: {
     [SATELLITE_SOURCE_ID]: {
       type: 'raster',
-      tiles: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      ],
+      tiles: view === 'overview'
+        ? [`${OVERVIEW_TILE_BASE}/imagery/{z}/{x}/{y}.jpg`]
+        : ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
-      attribution:
-        'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-      maxzoom: 18,
+      attribution: view === 'overview'
+        ? '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/" target="_blank" rel="noopener noreferrer">NASA Earth Observatory</a>'
+        : 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 18,
     },
     [TERRAIN_SOURCE_ID]: {
       type: 'raster-dem',
-      tiles: [
-        'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-      ],
+      tiles: view === 'overview'
+        ? [`${OVERVIEW_TILE_BASE}/terrain/{z}/{x}/{y}.png`]
+        : ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
       tileSize: 256,
       encoding: 'terrarium',
-      attribution: 'DEM © elevation-tiles-prod (Terrarium encoding)',
+      attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer">Mapzen terrain &amp; contributors</a>',
       minzoom: 0,
-      maxzoom: 15,
+      maxzoom: view === 'overview' ? OVERVIEW_MAX_ZOOM : 15,
     },
   },
   layers: [
@@ -56,7 +62,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       },
     },
   ],
-}
+})
 
 function buildFloodExpression(
   seaLevel: number
@@ -116,6 +122,7 @@ const SeaLevelRiseView = () => {
   const [seaLevel, setSeaLevel] = useState(DEFAULT_SEA_LEVEL_METERS)
   const [mapViewMode, setMapViewMode] =
     useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
+  const [dataView, setDataView] = useState<DataView>(DEFAULT_DATA_VIEW)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
@@ -126,10 +133,16 @@ const SeaLevelRiseView = () => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapViewModeRef = useRef<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
+  const cameraRef = useRef({ center: [8, 20] as [number, number], zoom: 1.55 })
+  const seaLevelRef = useRef(DEFAULT_SEA_LEVEL_METERS)
 
   useEffect(() => {
     mapViewModeRef.current = mapViewMode
   }, [mapViewMode])
+
+  useEffect(() => {
+    seaLevelRef.current = seaLevel
+  }, [seaLevel])
 
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -159,12 +172,13 @@ const SeaLevelRiseView = () => {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: MAP_STYLE,
-      center: [8, 20],
-      zoom: 1.55,
+      style: createMapStyle(dataView),
+      center: cameraRef.current.center,
+      zoom: Math.min(cameraRef.current.zoom, dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18),
+      maxZoom: dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18,
       pitch: 0,
       bearing: 0,
-      attributionControl: false,
+      attributionControl: {},
       canvasContextAttributes: {
         preserveDrawingBuffer: true,
       },
@@ -173,8 +187,9 @@ const SeaLevelRiseView = () => {
     setMapReady(false)
     setMapError(null)
 
+    map.addControl(new maplibregl.NavigationControl(), 'top-right')
+
     const handleLoad = () => {
-      map.addControl(new maplibregl.NavigationControl(), 'top-right')
       map.setTerrain({
         source: TERRAIN_SOURCE_ID,
         exaggeration: 1,
@@ -186,7 +201,7 @@ const SeaLevelRiseView = () => {
         type: 'color-relief',
         source: TERRAIN_SOURCE_ID,
         paint: {
-          'color-relief-color': buildFloodExpression(DEFAULT_SEA_LEVEL_METERS),
+          'color-relief-color': buildFloodExpression(seaLevelRef.current),
           'color-relief-opacity': 1,
         },
       })
@@ -206,17 +221,22 @@ const SeaLevelRiseView = () => {
     map.on('error', handleError)
 
     return () => {
+      const center = map.getCenter()
+      cameraRef.current = {
+        center: [center.lng, center.lat],
+        zoom: map.getZoom(),
+      }
       map.off('load', handleLoad)
       map.off('error', handleError)
       map.remove()
       mapRef.current = null
       setMapReady(false)
     }
-  }, [])
+  }, [dataView])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map) {
+    if (!mapReady || !map || !map.isStyleLoaded()) {
       return
     }
     applyMapViewMode(map, mapViewMode)
@@ -224,7 +244,7 @@ const SeaLevelRiseView = () => {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !map.getLayer(SEA_LEVEL_LAYER_ID)) {
+    if (!mapReady || !map || !map.isStyleLoaded() || !map.getLayer(SEA_LEVEL_LAYER_ID)) {
       return
     }
     map.setPaintProperty(
@@ -236,7 +256,7 @@ const SeaLevelRiseView = () => {
 
   const createExportImage = useCallback(async () => {
     const map = mapRef.current
-    if (!mapReady || !map) {
+    if (!mapReady || !map || !map.isStyleLoaded()) {
       return null
     }
 
@@ -274,9 +294,12 @@ const SeaLevelRiseView = () => {
     const paddingX = Math.max(16, Math.round(fontSize * 0.8))
     const paddingY = Math.max(8, Math.round(fontSize * 0.5))
     context.font = `${fontSize}px "IBM Plex Sans", "Segoe UI", sans-serif`
-    const textWidth = Math.ceil(context.measureText(WATERMARK_TEXT).width)
+    const watermarkLines = context.measureText(WATERMARK_TEXT).width + paddingX * 2 > exportCanvas.width - 24
+      ? ['runcell.dev/tool/true-size-map/', 'sea-level-rise-simulator']
+      : [WATERMARK_TEXT]
+    const textWidth = Math.ceil(Math.max(...watermarkLines.map((line) => context.measureText(line).width)))
     const boxWidth = textWidth + paddingX * 2
-    const boxHeight = fontSize + paddingY * 2
+    const boxHeight = fontSize * watermarkLines.length + paddingY * 2
     const boxX = (exportCanvas.width - boxWidth) / 2
     const boxY = exportCanvas.height - boxHeight - marginBottom
 
@@ -289,14 +312,30 @@ const SeaLevelRiseView = () => {
     context.fillStyle = 'rgba(248, 245, 239, 0.9)'
     context.textAlign = 'center'
     context.textBaseline = 'middle'
-    context.fillText(
-      WATERMARK_TEXT,
-      exportCanvas.width / 2,
-      boxY + boxHeight / 2
-    )
+    watermarkLines.forEach((line, index) => {
+      context.fillText(
+        line,
+        exportCanvas.width / 2,
+        boxY + paddingY + fontSize * (index + 0.5)
+      )
+    })
+
+    const credits = dataView === 'overview'
+      ? ['Imagery: NASA Earth Observatory', 'Terrain: Mapzen and data contributors']
+      : [
+          'Imagery: Esri, Maxar, Earthstar Geographics',
+          'GIS User Community; terrain: Mapzen and data contributors',
+        ]
+    context.font = `${Math.max(10, Math.round(fontSize * 0.65))}px "IBM Plex Sans", sans-serif`
+    context.textAlign = 'left'
+    context.textBaseline = 'top'
+    context.fillStyle = 'rgba(248, 245, 239, 0.95)'
+    credits.forEach((credit, index) => {
+      context.fillText(credit, 12, 12 + index * 16, exportCanvas.width - 24)
+    })
 
     return exportCanvas.toDataURL('image/png')
-  }, [mapReady])
+  }, [dataView, mapReady])
 
   const generatePreview = useCallback(async () => {
     setPreviewLoading(true)
@@ -372,6 +411,31 @@ const SeaLevelRiseView = () => {
         </div>
 
         <div className="sea-level-controls">
+          <div className="sea-level-data-switch" role="group" aria-label="Map detail level">
+            <button
+              type="button"
+              className={`sea-level-data-button ${dataView === 'overview' ? 'is-active' : ''}`}
+              aria-pressed={dataView === 'overview'}
+              disabled={!mapReady && !mapError}
+              onClick={() => setDataView('overview')}
+            >
+              Global overview
+            </button>
+            <button
+              type="button"
+              className={`sea-level-data-button ${dataView === 'detail' ? 'is-active' : ''}`}
+              aria-pressed={dataView === 'detail'}
+              disabled={!mapReady && !mapError}
+              onClick={() => setDataView('detail')}
+            >
+              Satellite detail
+            </button>
+          </div>
+          <p className="sea-level-mode-note">
+            {dataView === 'overview'
+              ? 'Global preview uses map data hosted on this site. Select satellite detail to zoom in farther.'
+              : 'Satellite detail loads Esri imagery and higher-resolution terrain tiles as you explore.'}
+          </p>
           <div className="sea-level-mode-switch" role="group" aria-label="Sea level map mode">
             <button
               type="button"
@@ -457,11 +521,11 @@ const SeaLevelRiseView = () => {
               flooded even though no connected waterway exists from the ocean.
             </li>
             <li>
-              <strong>DEM resolution.</strong> The elevation data has limited
-              resolution (~30–90 m per pixel). Narrow waterways, channels, and
-              small islands may not be captured accurately — nearby pixels
-              average land and water, making some features appear at higher
-              elevations than they really are.
+              <strong>DEM resolution.</strong> The default global overview uses
+              terrain tiles through zoom level 4, so it shows broad regions,
+              not individual streets or small sea-level changes. Satellite
+              detail loads finer terrain data, though narrow channels, sea
+              walls, and small islands may still be averaged out.
             </li>
             <li>
               <strong>Not a scientific projection.</strong> Real-world flooding
@@ -470,6 +534,13 @@ const SeaLevelRiseView = () => {
               educational visualization, not a planning tool.
             </li>
           </ul>
+          <p>
+            Overview imagery: NASA Earth Observatory Blue Marble Next Generation.
+            Terrain: Mapzen terrain tiles and their{' '}
+            <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer">
+              data contributors
+            </a>.
+          </p>
         </details>
 
         <p className="sea-level-related">

@@ -50,7 +50,7 @@ export const SEA_LEVEL_FAQS: FaqItem[] = [
   {
     question: 'What elevation data does the map use?',
     answer:
-      'It renders an open global digital elevation model with MapLibre GL. The resolution is limited to roughly tens of metres per pixel, so narrow channels, sea walls, and small islands may be averaged and shown approximately.',
+      'The default overview renders locally hosted Mapzen terrain tiles through zoom level 4. Satellite detail loads finer terrain tiles. Both are elevation-based visualizations; narrow channels, sea walls, and small islands may be averaged and shown approximately.',
   },
 ]
 

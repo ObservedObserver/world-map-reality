@@ -108,7 +108,15 @@ tool's pages is not counted as traffic sent to the main Runcell site.
 
 ## Sea-level data source
 
-The sea-level simulator now runs on `maplibre-gl` with public, token-free sources:
+The sea-level simulator runs on `maplibre-gl`. Its default overview uses
+self-hosted tiles in `public/maps/sea-level-overview`:
+
+- NASA Blue Marble Next Generation imagery, transformed into Web Mercator tiles
+- Mapzen Terrain Tiles elevation through zoom level 4
+
+The user can opt into a satellite detail view that loads the original live sources:
 
 - Satellite imagery: Esri World Imagery tiles
 - Elevation DEM: elevation-tiles-prod Terrarium tiles
+
+Source provenance and attribution: `public/maps/sea-level-overview/SOURCES.md`.

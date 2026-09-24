@@ -28,6 +28,14 @@
 
 ---
 
+## 2026-09-24：海平面页本地概览原型，未发布
+
+- 约 **03:42 PDT，America/Los_Angeles** 检查 [Google Search Status Dashboard](https://status.search.google.com/)、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)及 [Search Central 公告](https://developers.google.com/search/blog)。Dashboard 当时显示无事件，最后更新 03:25 PDT；排名历史中最近一次为 8/18–8/21 的 August 2026 spam update。9 月博客列表未见与本站地图工具相关的新政策公告。此检查只用于本地规划，不能代替上线前复核。
+- 影响范围是现有 `/sea-level-rise-simulator` 的地图 UI、地图请求、准确性说明及一条 DEM FAQ。`/tool/true-size-map` 根页、共享 SEO metadata、title、H1、canonical、robots 和内链均未改。此页面已有搜索流量，因此后续发布仍须评估页面级风险。
+- 本次没有查询 GSC。最近在本日志中实际记录的完整 GSC 日为 2026-09-04，不能当作 9/24 的当前基线。**决定：仅保留本地分支供评审，不推送或部署。** 发布前须重新检查官方状态，并用指定 GSC skill 取得最新完整数据日与海平面页基线，再决定是否发布。
+
+---
+
 ## 2026-09-06：独立 Equal Earth 工具页，小范围增量发布
 
 ### 发布范围与决定

@@ -766,6 +766,25 @@ const SeaLevelRiseView = () => {
           </p>
         </details>
 
+        <a
+          className="sea-level-mars-recommendation"
+          href="https://tinytovast.com/mars-sea-level-simulator"
+        >
+          <img
+            src={`${import.meta.env.BASE_URL}mars-sea-level-simulator.jpg`}
+            alt="Mars globe with a hypothetical blue ocean across its lowlands"
+            width="1727"
+            height="911"
+            loading="lazy"
+          />
+          <span className="sea-level-mars-recommendation-copy">
+            <span className="sea-level-mars-recommendation-eyebrow">Explore another world</span>
+            <strong>Mars Sea Level Simulator</strong>
+            <span>Give Mars a waterline and see which landscapes turn blue.</span>
+            <span className="sea-level-mars-recommendation-cta">Try the Mars tool →</span>
+          </span>
+        </a>
+
         <p className="sea-level-related">
           More map tools:{' '}
           <a href="/tool/true-size-map/asteroid-impact-simulator">

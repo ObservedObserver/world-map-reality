@@ -28,6 +28,15 @@
 
 ---
 
+## 2026-09-24：火星工具推荐卡片发布复核
+
+- **09:19 PDT，America/Los_Angeles 规划复核**：[Google Search Status Dashboard](https://status.search.google.com/) 显示无事件（页面最后更新 08:58 PDT）；[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)最近仍是 August 2026 spam update，8/18 09:27–8/21 01:49 PDT，已结束；[Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)没有与本站自有工具推荐卡片相关的新政策或执行窗口。正式部署前必须再次实时复核。
+- **范围与信号**：仅在 `/tool/true-size-map/sea-level-rise-simulator` 现有相关工具区加入一张带图的推荐卡片，链接到 `https://tinytovast.com/mars-sea-level-simulator`；图为新工具在 −2,000 m 水位的真实截图，JPG 约 250 KB。地球地图计算、title、H1、description、canonical、robots、结构化数据及根页均未改。这个页面有较高搜索流量，按流量评估推荐区的可见文案与出站链接，而不按改动行数降级风险。
+- **GSC 基线**：按指定 GSC skill 查询 `sc-domain:runcell.dev` 的最终 Web 数据，最新完整日为 **9/21**；9/22 尚无最终数据，未计零。海平面页 9/15–9/21 为 1,860 点击、10,782 展示、平均位次 5.20（现有同日记录）；9/14–9/20 独立复核为 1,852 点击、10,914 展示，约 265 点击/日。当天较早的地图外观发布尚无发布后 GSC 完整日，因此后续变化不能归因于推荐卡片。
+- **09:25–09:26 PDT 发布前复核**：火星工具先于本改动上线，正式地址、地形/影像瓦片、封面均为 HTTP 200，浏览器地图正常且无运行时错误。再次查询上述 Google 官方四处来源，Dashboard 仍无事件，最近排名更新仍是已结束的 August spam update，没有相关的新政策窗口；再次查询 GSC 9/20–9/22，最新完整日仍为 **9/21**，9/22 不可用。决定放行这一个页面的相关工具入口。由于同日海平面页已有地图视觉发布且没有新的最终 GSC 日，后续流量变化不能单独归因于本次卡片；不据此扩大到根页或全站导航。
+
+---
+
 ## 2026-09-24：海平面地图视觉更新发布门槛
 
 - **2026-09-24 07:33–07:40 PDT，America/Los_Angeles** 复查 [Google Search Status Dashboard](https://status.search.google.com/)（无事件，状态页最后更新 07:33 PDT）、[官方 JSON 事件记录](https://status.search.google.com/incidents.json)、[排名更新历史](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)、[Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)。最近一次排名更新仍为 [August 2026 spam update](https://status.search.google.com/incidents/LEubPCm2octf2uMqCFKE)，8/18 09:27–8/21 01:49 PDT，已结束；无进行中或已预告的更新。9 月公告为 Search Console 多模态报告和 Search Central Live 活动。文档更新中，9/24 VideoObject 的 `creator`/`interactionStatistic`、9/18 本地商家查询、9/16 Search profile 徽章均与本次改动无关；本页结构化数据只有 WebApplication 和 BreadcrumbList。8/28 EEA 网站声誉政策针对第三方内容，本页不涉及。

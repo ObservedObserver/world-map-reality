@@ -123,7 +123,10 @@ const SeaLevelRiseView = () => {
   const [mapViewMode, setMapViewMode] =
     useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
   const [dataView, setDataView] = useState<DataView>(DEFAULT_DATA_VIEW)
-  const [mapReady, setMapReady] = useState(false)
+  const [readyMap, setReadyMap] = useState<{
+    map: maplibregl.Map
+    view: DataView
+  } | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
   const [exportPreviewUrl, setExportPreviewUrl] = useState<string | null>(null)
@@ -135,6 +138,8 @@ const SeaLevelRiseView = () => {
   const mapViewModeRef = useRef<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
   const cameraRef = useRef({ center: [8, 20] as [number, number], zoom: 1.55 })
   const seaLevelRef = useRef(DEFAULT_SEA_LEVEL_METERS)
+  // Readiness belongs to the loaded map instance, not just the selected view.
+  const mapReady = readyMap?.map === mapRef.current && readyMap.view === dataView
 
   useEffect(() => {
     mapViewModeRef.current = mapViewMode
@@ -184,7 +189,7 @@ const SeaLevelRiseView = () => {
       },
     })
     mapRef.current = map
-    setMapReady(false)
+    setReadyMap(null)
     setMapError(null)
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
@@ -206,7 +211,7 @@ const SeaLevelRiseView = () => {
         },
       })
 
-      setMapReady(true)
+      setReadyMap({ map, view: dataView })
     }
 
     const handleError = (event: maplibregl.ErrorEvent) => {
@@ -230,21 +235,22 @@ const SeaLevelRiseView = () => {
       map.off('error', handleError)
       map.remove()
       mapRef.current = null
-      setMapReady(false)
+      setReadyMap(null)
     }
   }, [dataView])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !map.isStyleLoaded()) {
+    if (!mapReady || readyMap?.map !== map) {
       return
     }
+    // Raster tiles can still be loading when the style already accepts updates.
     applyMapViewMode(map, mapViewMode)
-  }, [mapReady, mapViewMode])
+  }, [dataView, mapReady, mapViewMode, readyMap])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !map.isStyleLoaded() || !map.getLayer(SEA_LEVEL_LAYER_ID)) {
+    if (!mapReady || readyMap?.map !== map || !map.getLayer(SEA_LEVEL_LAYER_ID)) {
       return
     }
     map.setPaintProperty(
@@ -252,11 +258,11 @@ const SeaLevelRiseView = () => {
       'color-relief-color',
       buildFloodExpression(seaLevel) as maplibregl.ExpressionSpecification
     )
-  }, [mapReady, seaLevel])
+  }, [dataView, mapReady, readyMap, seaLevel])
 
   const createExportImage = useCallback(async () => {
     const map = mapRef.current
-    if (!mapReady || !map || !map.isStyleLoaded()) {
+    if (!mapReady || readyMap?.map !== map || !map.getLayer(SEA_LEVEL_LAYER_ID)) {
       return null
     }
 
@@ -335,7 +341,7 @@ const SeaLevelRiseView = () => {
     })
 
     return exportCanvas.toDataURL('image/png')
-  }, [dataView, mapReady])
+  }, [dataView, mapReady, readyMap])
 
   const generatePreview = useCallback(async () => {
     setPreviewLoading(true)

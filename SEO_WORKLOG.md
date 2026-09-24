@@ -33,7 +33,7 @@
 - **09:42 PDT，America/Los_Angeles 复核**：[Google Search Status Dashboard](https://status.search.google.com/) 已显示 [September 2026 spam update](https://status.search.google.com/incidents/XhUDXP7A67iHCD2kmbVu) 进行中。官方记录的开始时间是 **09:15 PDT**，适用于全球所有语言，预计最长约两周；Dashboard 页面最后更新 09:28 PDT。排名历史同步列出该更新。重新检查 [Search Central 公告](https://developers.google.com/search/blog)和[文档更新](https://developers.google.com/search/updates)，未发现另一个与本次火星工具封面调整相关的政策执行窗口。
 - **先前发布发生重叠**：火星工具 PR 于 09:23:52 PDT 合并，地球页推荐卡片 PR 于 09:27:35 PDT 合并，随后生产部署成功。之前的发布前检查所见 Dashboard 最后更新时间为 08:58 PDT，当时尚未显示这次更新；现在以官方新记录为准。停止后续 SEO 改动和推广范围扩大，不把之后的流量变化单独归因于任何一个站点改动，也不因宣布更新而自动回滚。
 - **本次待审范围**：火星工具去掉可见的地图署名控件与正文来源段落，并重新截取没有叠字的 JPG；本仓库只替换 `/tool/true-size-map/sea-level-rise-simulator` 推荐卡片引用的同路径 JPG。地球页 title、H1、description、canonical、robots、结构化数据、链接和地图功能均不变；根页不变。原始素材来源记录保留在另一仓库的 `public/data/MARS_SOURCES.md`，等待统一 reference 页面。
-- **GSC 基线与决定**：发布前最近完整日仍是 2026-09-21；海平面页 9/15–9/21 为 1,860 点击、10,782 展示、平均位次 5.20。更新开始后的最终数据尚不可用，不将缺失日计为零。**仅完成本地实现、测试与 PR 准备，暂缓生产部署。** 本仓库待审改动只是同路径 JPG 替换，不属于顶部政策中必须等待更新结束后 7 个完整 GSC 日的重大或高风险 SEO 改动；该门槛不应机械套用。发布前仍须重新检查官方状态和页面基线；同时让统一 reference 页面公开提供素材署名、许可链接和改编说明，再决定发布无叠字封面。
+- **GSC 基线与 10:03 PDT 发布决定**：发布前最近完整日仍是 2026-09-21；海平面页 9/15–9/21 为 1,860 点击、10,782 展示、平均位次 5.20。更新开始后的最终数据尚不可用，不将缺失日计为零。再次核对官方 Dashboard（最后更新 09:58 PDT）、排名历史、Search Central 公告和文档更新：September 2026 spam update 仍在进行，没有发现另一项与本次封面有关的政策执行窗口。用户确认上线两个仓库的待审变更。本仓库只替换同路径 JPG；对照推荐卡片加入前的提交，`src/seo-meta.json` 和 `src/App.tsx` 均未变，海平面页 title、meta description、H1 保持原值。按顶部政策的流量与范围标准，这次不是重大或高风险 SEO 改动，决定放行，不套用重大改动的 7 个完整 GSC 日门槛。火星贴图来源、CC BY 4.0 链接和改编说明已公开保存在 `https://tinytovast.com/data/MARS_SOURCES.md`；火星页以非可视的文档链接指向该记录，后续再迁到统一 reference 页面。更新与先前发布重叠，观察流量时继续保留这一干扰说明。
 
 ---
 

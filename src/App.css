@@ -1825,9 +1825,17 @@
 
 .sea-level-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
   align-items: flex-end;
   margin-left: auto;
+}
+
+.sea-level-share-status {
+  margin: 0;
+  color: var(--mist);
+  font-size: 0.85rem;
 }
 
 .sea-level-preset {

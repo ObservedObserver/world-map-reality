@@ -31,6 +31,15 @@ https://github.com/user-attachments/assets/548db03a-6b04-49a5-a41c-32a8cb9c4764
 
 WebGL + Mapbox GL based flood preview using Terrain RGB elevation decoding on top of a satellite basemap.
 
+The sea-level tool supports links such as
+`https://www.runcell.dev/tool/true-size-map/sea-level-rise-simulator?height=70&mode=3d`.
+`height` is the sea-level target in meters, rounded to a whole meter and clamped
+to −5,000 through 5,000. `mode` is `2d` or `3d`. Missing or invalid values use
+0 meters and 2D, the existing defaults. The controls update the URL, and Share
+uses system sharing where available or copies the link. The share section's
+copy and social links carry the same settings. Camera position, zoom and map
+detail level are not included in this version.
+
 ## About
 
 The Mercator projection is one of the most common map projections, but it has a significant flaw: it distorts the size of countries based on their latitude. Countries near the poles appear much larger than they actually are, while countries near the equator are shown more accurately.

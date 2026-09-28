@@ -83,6 +83,8 @@ import MapView from './components/MapView'
 import EquatorShiftView from './components/EquatorShiftView'
 import SeoContent from './components/SeoContent'
 import SeaLevelSeoContent from './components/SeaLevelSeoContent'
+import type { SeaLevelRiseViewProps } from './components/SeaLevelRiseView'
+import { buildSeaLevelShareUrl, readSeaLevelSettings } from './utils/seaLevel'
 import GlobeSeoContent from './components/GlobeSeoContent'
 import EquatorSeoContent from './components/EquatorSeoContent'
 import MapErrorBoundary from './components/MapErrorBoundary'
@@ -145,7 +147,7 @@ const ToolViewUnavailable = ({ name }: { name: string }) => (
   </main>
 )
 
-const SeaLevelRoute = () => {
+const SeaLevelRoute = (props: SeaLevelRiseViewProps) => {
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
@@ -158,7 +160,7 @@ const SeaLevelRoute = () => {
 
   return (
     <Suspense fallback={<SeaLevelLoading />}>
-      <SeaLevelRiseView />
+      <SeaLevelRiseView {...props} />
     </Suspense>
   )
 }
@@ -320,6 +322,9 @@ function App() {
   const [globeRotation, setGlobeRotation] = useState<Vec3>(
     GLOBE_DEFAULT_ROTATION
   )
+  const [shareReady, setShareReady] = useState(false)
+  useEffect(() => setShareReady(true), [])
+
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>(
     'idle'
   )
@@ -548,7 +553,14 @@ function App() {
     }
     return seoMeta.pages.map
   }, [comparisonMeta, isAnalemmaPage, isAsteroidPage, isNuclearPage, isEquatorLab, isGlobePage, isPlanetSkyPage, isSeaLevelPage])
-  const shareUrl = pageMeta.canonical
+  const shareUrl = useMemo(() => {
+    // Match the static HTML during hydration, then resolve the visiting URL.
+    if (!isSeaLevelPage || !shareReady) return pageMeta.canonical
+    const url = new URL(pageMeta.canonical)
+    url.search = location.search
+    url.hash = location.hash
+    return buildSeaLevelShareUrl(url.href, readSeaLevelSettings(url.searchParams))
+  }, [isSeaLevelPage, location.hash, location.search, pageMeta.canonical, shareReady])
   const structuredData = useMemo(() => {
     const breadcrumbs = [
       {
@@ -667,20 +679,30 @@ function App() {
 
   const handleCopyShareLink = useCallback(async () => {
     try {
+      let copied = false
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl)
-      } else {
+        try {
+          await navigator.clipboard.writeText(shareUrl)
+          copied = true
+        } catch {
+          // The Clipboard API can be present but blocked by browser permissions.
+        }
+      }
+      if (!copied) {
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl
         textArea.setAttribute('readonly', 'true')
-        textArea.style.position = 'absolute'
+        textArea.style.position = 'fixed'
+        textArea.style.top = '0'
         textArea.style.left = '-9999px'
         document.body.appendChild(textArea)
         textArea.select()
-        const copySucceeded = document.execCommand('copy')
-        document.body.removeChild(textArea)
-        if (!copySucceeded) {
-          throw new Error('Clipboard copy command failed')
+        try {
+          if (!document.execCommand('copy')) {
+            throw new Error('Clipboard copy command failed')
+          }
+        } finally {
+          textArea.remove()
         }
       }
       setCopyStatus('copied')
@@ -705,8 +727,12 @@ function App() {
       }
     }
 
+    if (isSeaLevelPage) {
+      await handleCopyShareLink()
+      return
+    }
     window.open(shareLinks.x, '_blank', 'noopener,noreferrer')
-  }, [pageMeta.description, pageMeta.title, shareLinks.x, shareUrl])
+  }, [handleCopyShareLink, isSeaLevelPage, pageMeta.description, pageMeta.title, shareLinks.x, shareUrl])
 
   const headerEyebrow = comparisonMeta
     ? comparisonMeta.eyebrow
@@ -1776,7 +1802,7 @@ function App() {
         </MapErrorBoundary>
       ) : isSeaLevelPage ? (
         <MapErrorBoundary key="sea-level" fallback={<SeaLevelUnavailable />}>
-          <SeaLevelRoute />
+          <SeaLevelRoute onShare={handleNativeShare} shareStatus={copyStatus} />
         </MapErrorBoundary>
       ) : isTrueSizePage ? (
         isMapView ? (

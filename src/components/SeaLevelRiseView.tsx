@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Check, Download, Share2 } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import {
+  buildSeaLevelShareUrl,
+  MAX_SEA_LEVEL_METERS,
+  MIN_SEA_LEVEL_METERS,
+  readSeaLevelSettings,
+} from '../utils/seaLevel'
+import type { MapViewMode, SeaLevelSettings } from '../utils/seaLevel'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-const DEFAULT_SEA_LEVEL_METERS = 0
-const MIN_SEA_LEVEL_METERS = -5000
-const MAX_SEA_LEVEL_METERS = 5000
-const DEFAULT_MAP_VIEW_MODE = '2d'
 const DEFAULT_DATA_VIEW = 'overview'
 const OVERVIEW_MAX_ZOOM = 4
 const SEA_LEVEL_LAYER_ID = 'sea-level-overlay'
@@ -23,7 +27,6 @@ const GLOBE_PITCH_DEGREES = 30
 const GLOBE_BEARING_DEGREES = -14
 const MODE_TRANSITION_MS = 650
 
-type MapViewMode = '2d' | '3d'
 type DataView = 'overview' | 'detail'
 type Rgb = readonly [number, number, number]
 // Distance in meters from the waterline, color, and alpha.
@@ -312,10 +315,28 @@ function applyMapViewMode(
   })
 }
 
-const SeaLevelRiseView = () => {
-  const [seaLevel, setSeaLevel] = useState(DEFAULT_SEA_LEVEL_METERS)
-  const [mapViewMode, setMapViewMode] =
-    useState<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
+export type SeaLevelRiseViewProps = {
+  onShare: () => Promise<void>
+  shareStatus: 'idle' | 'copied' | 'failed'
+}
+
+const SeaLevelRiseView = ({ onShare, shareStatus }: SeaLevelRiseViewProps) => {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { height: seaLevel, mode: mapViewMode } = readSeaLevelSettings(
+    new URLSearchParams(location.search),
+  )
+  const updateSettings = useCallback((patch: Partial<SeaLevelSettings>) => {
+    const current = new URL(window.location.href)
+    const url = new URL(buildSeaLevelShareUrl(current.href, {
+      ...readSeaLevelSettings(current.searchParams),
+      ...patch,
+    }))
+    navigate({ pathname: location.pathname, search: url.search, hash: url.hash }, {
+      replace: true,
+      preventScrollReset: true,
+    })
+  }, [location.pathname, navigate])
   const [dataView, setDataView] = useState<DataView>(DEFAULT_DATA_VIEW)
   const [readyMap, setReadyMap] = useState<{
     map: maplibregl.Map
@@ -329,9 +350,9 @@ const SeaLevelRiseView = () => {
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const mapViewModeRef = useRef<MapViewMode>(DEFAULT_MAP_VIEW_MODE)
+  const mapViewModeRef = useRef<MapViewMode>(mapViewMode)
   const cameraRef = useRef({ center: [8, 20] as [number, number], zoom: 1.55 })
-  const seaLevelRef = useRef(DEFAULT_SEA_LEVEL_METERS)
+  const seaLevelRef = useRef(seaLevel)
   // Readiness belongs to the loaded map instance, not just the selected view.
   const mapReady = readyMap?.map === mapRef.current && readyMap.view === dataView
 
@@ -371,12 +392,15 @@ const SeaLevelRiseView = () => {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: createMapStyle(dataView, seaLevelRef.current),
+      style: {
+        ...createMapStyle(dataView, seaLevelRef.current),
+        projection: { type: mapViewModeRef.current === '3d' ? 'globe' : 'mercator' },
+      },
       center: cameraRef.current.center,
       zoom: Math.min(cameraRef.current.zoom, dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18),
       maxZoom: dataView === 'overview' ? OVERVIEW_MAX_ZOOM : 18,
-      pitch: 0,
-      bearing: 0,
+      pitch: mapViewModeRef.current === '3d' ? GLOBE_PITCH_DEGREES : 0,
+      bearing: mapViewModeRef.current === '3d' ? GLOBE_BEARING_DEGREES : 0,
       attributionControl: {},
       canvasContextAttributes: {
         preserveDrawingBuffer: true,
@@ -644,7 +668,7 @@ const SeaLevelRiseView = () => {
                 mapViewMode === '2d' ? 'is-active' : ''
               }`}
               aria-pressed={mapViewMode === '2d'}
-              onClick={() => setMapViewMode('2d')}
+              onClick={() => updateSettings({ mode: '2d' })}
             >
               2D map
             </button>
@@ -654,7 +678,7 @@ const SeaLevelRiseView = () => {
                 mapViewMode === '3d' ? 'is-active' : ''
               }`}
               aria-pressed={mapViewMode === '3d'}
-              onClick={() => setMapViewMode('3d')}
+              onClick={() => updateSettings({ mode: '3d' })}
             >
               3D globe
             </button>
@@ -675,7 +699,7 @@ const SeaLevelRiseView = () => {
             step={1}
             value={seaLevel}
             disabled={!mapReady}
-            onChange={(event) => setSeaLevel(Number(event.target.value))}
+            onChange={(event) => updateSettings({ height: Number(event.target.value) })}
           />
           <div className="sea-level-presets-row">
             <div className="sea-level-presets">
@@ -687,13 +711,23 @@ const SeaLevelRiseView = () => {
                     seaLevel === level ? 'is-active' : ''
                   }`}
                   disabled={!mapReady}
-                  onClick={() => setSeaLevel(level)}
+                  onClick={() => updateSettings({ height: level })}
                 >
                   +{level}m
                 </button>
               ))}
             </div>
             <div className="sea-level-actions">
+              <button
+                type="button"
+                className="github-button button-with-icon"
+                onClick={onShare}
+              >
+                {shareStatus === 'copied'
+                  ? <Check size={15} aria-hidden="true" />
+                  : <Share2 size={15} aria-hidden="true" />}
+                {shareStatus === 'copied' ? 'Link copied' : 'Share'}
+              </button>
               <button
                 type="button"
                 className="github-button button-with-icon"
@@ -705,6 +739,13 @@ const SeaLevelRiseView = () => {
               </button>
             </div>
           </div>
+          {shareStatus !== 'idle' && (
+            <p className="sea-level-share-status" role="status">
+              {shareStatus === 'copied'
+                ? 'Link copied.'
+                : 'Could not copy the link. Try again or copy it from the share section below.'}
+            </p>
+          )}
         </div>
 
         <div className="sea-level-map-shell">

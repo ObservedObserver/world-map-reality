@@ -1,5 +1,7 @@
 # True size of countries
 
+This repository is a public source snapshot. Active development is maintained separately. Public updates are published after review.
+
 ## Use case 1: counries on other planets
 
 
